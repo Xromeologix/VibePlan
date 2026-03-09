@@ -17,7 +17,8 @@ import {
   Sparkles,
   Rocket,
   ShieldAlert,
-  X
+  X,
+  Globe
 } from 'lucide-react';
 import { Space, Idea, Credits, ACCENT_COLORS } from './types';
 import Mermaid from './components/Mermaid';
@@ -25,8 +26,20 @@ import ProgressPulse from './components/ProgressPulse';
 import NewIdeaWorkflow from './components/NewIdeaWorkflow';
 import { generateIcon } from './services/gemini';
 
+interface User {
+  id: number;
+  google_id: string;
+  email: string;
+  name: string;
+  picture: string;
+  credits_used: number;
+  monthly_limit: number;
+}
+
 export default function App() {
   const [view, setView] = useState('projects'); 
+  const [user, setUser] = useState<User | null>(null);
+  const [isLoading, setIsLoading] = useState(true);
   const [activeSpace, setActiveSpace] = useState<Space | null>(null);
   const [selectedFeature, setSelectedFeature] = useState<Idea | null>(null);
   const [showArchived, setShowArchived] = useState(false);
@@ -47,6 +60,90 @@ export default function App() {
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   useEffect(() => {
+    fetchUser();
+  }, []);
+
+  useEffect(() => {
+    if (user) {
+      fetchSpaces();
+    }
+  }, [user]);
+
+  const fetchUser = async () => {
+    try {
+      const res = await fetch('/api/auth/me');
+      if (res.ok) {
+        const userData = await res.json();
+        setUser(userData);
+        setCredits(prev => ({
+          ...prev,
+          monthlyLimit: userData.monthly_limit,
+          usedThisMonth: userData.credits_used
+        }));
+      }
+    } catch (error) {
+      console.error('Failed to fetch user:', error);
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  const fetchSpaces = async () => {
+    try {
+      const res = await fetch('/api/spaces');
+      if (res.ok) {
+        const spacesData = await res.json();
+        setSpaces(spacesData);
+      }
+    } catch (error) {
+      console.error('Failed to fetch spaces:', error);
+    }
+  };
+
+  const handleLogin = async () => {
+    const authWindow = window.open('about:blank', 'oauth_popup', 'width=600,height=700');
+    
+    if (!authWindow) {
+      alert('Please allow popups for this site to connect your account.');
+      return;
+    }
+
+    try {
+      const res = await fetch('/api/auth/url');
+      const { url } = await res.json();
+      authWindow.location.href = url;
+    } catch (error) {
+      console.error('Login error:', error);
+      authWindow.close();
+    }
+  };
+
+  const handleLogout = async () => {
+    try {
+      await fetch('/api/auth/logout', { method: 'POST' });
+      setUser(null);
+      setSpaces([]);
+      setView('projects');
+    } catch (error) {
+      console.error('Logout error:', error);
+    }
+  };
+
+  useEffect(() => {
+    const handleMessage = (event: MessageEvent) => {
+      const origin = event.origin;
+      if (!origin.endsWith('.run.app') && !origin.includes('localhost')) {
+        return;
+      }
+      if (event.data?.type === 'OAUTH_AUTH_SUCCESS') {
+        fetchUser();
+      }
+    };
+    window.addEventListener('message', handleMessage);
+    return () => window.removeEventListener('message', handleMessage);
+  }, []);
+
+  useEffect(() => {
     const timer = setInterval(() => {
       const now = new Date();
       const reset = new Date();
@@ -59,9 +156,20 @@ export default function App() {
     return () => clearInterval(timer);
   }, []);
 
-  const useCredit = () => {
+  const useCredit = async () => {
     if (credits.usedThisMonth >= credits.monthlyLimit) return false;
-    setCredits(prev => ({ ...prev, usedThisMonth: prev.usedThisMonth + 1 }));
+    const newUsed = credits.usedThisMonth + 1;
+    setCredits(prev => ({ ...prev, usedThisMonth: newUsed }));
+    
+    try {
+      await fetch('/api/user/credits', {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ credits_used: newUsed })
+      });
+    } catch (error) {
+      console.error('Failed to update credits:', error);
+    }
     return true;
   };
 
@@ -106,6 +214,45 @@ export default function App() {
 
   const activeColor = (space: Space | null) => ACCENT_COLORS.find(c => c.name === space?.color) || ACCENT_COLORS[0];
 
+  if (isLoading) {
+    return (
+      <div className="min-h-screen flex items-center justify-center bg-[#fafafa]">
+        <Loader2 className="w-8 h-8 text-indigo-600 animate-spin" />
+      </div>
+    );
+  }
+
+  if (!user) {
+    return (
+      <div className="min-h-screen flex flex-col items-center justify-center bg-[#fafafa] p-6">
+        <div className="w-16 h-16 bg-gradient-to-br from-indigo-600 via-purple-600 to-fuchsia-500 rounded-2xl flex items-center justify-center shadow-2xl shadow-indigo-200 mb-8">
+          <Terminal className="text-white w-8 h-8" />
+        </div>
+        <h1 className="text-4xl font-bold tracking-tighter text-slate-900 mb-2">VibePlan</h1>
+        <p className="text-slate-500 text-sm font-medium uppercase tracking-[0.3em] mb-12">Architecture Synthesis Terminal</p>
+        
+        <div className="max-w-md w-full bg-white border border-slate-200 rounded-3xl p-10 shadow-xl shadow-slate-200/50 text-center space-y-8">
+          <div className="space-y-2">
+            <h2 className="text-xl font-bold text-slate-900">Welcome to the Environment</h2>
+            <p className="text-slate-400 text-xs">Authorize your session to begin synthesizing vibes.</p>
+          </div>
+          
+          <button 
+            onClick={handleLogin}
+            className="w-full py-4 bg-indigo-600 text-white rounded-xl font-bold text-xs uppercase tracking-[0.2em] shadow-lg shadow-indigo-100 hover:bg-indigo-700 hover:scale-[1.02] transition-all flex items-center justify-center gap-3"
+          >
+            <Globe size={18} />
+            Connect via Google
+          </button>
+          
+          <div className="pt-6 border-t border-slate-100">
+            <p className="text-[10px] text-slate-300 font-bold uppercase tracking-widest">Secure Protocol 1.4 Activated</p>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
   return (
     <div className="min-h-screen">
       <nav className="sticky top-0 z-50 bg-white/80 backdrop-blur-md border-b border-slate-200 px-6 py-3 flex justify-between items-center">
@@ -128,6 +275,14 @@ export default function App() {
           </div>
         </div>
         <div className="flex items-center gap-4">
+          {user ? (
+            <div className="flex items-center gap-3">
+              <img src={user.picture} alt={user.name} className="w-8 h-8 rounded-full border border-slate-200" />
+              <button onClick={handleLogout} className="text-[9px] font-bold text-slate-400 uppercase tracking-widest hover:text-rose-500 transition-colors">Logout</button>
+            </div>
+          ) : (
+            <button onClick={handleLogin} className="px-4 py-1.5 bg-indigo-600 text-white rounded-lg text-[10px] font-bold uppercase tracking-widest hover:bg-indigo-700 transition-colors">Login with Google</button>
+          )}
           <button onClick={() => setView('credit_settings')} className="flex items-center gap-2 px-3 py-1 bg-teal-50 border border-teal-100 rounded text-teal-600 hover:bg-teal-100 transition-colors text-[9px] font-bold uppercase tracking-tighter">
             <Clock size={12} /> Reset: {resetTimer}
           </button>
@@ -260,14 +415,24 @@ export default function App() {
           <ProgressPulse 
             activeSpace={activeSpace}
             selectedFeature={selectedFeature}
-            onUpdate={(progressData) => {
-              if (useCredit()) {
-                const updatedIdeas = activeSpace.ideas.map(i => i.id === selectedFeature.id ? { ...i, progress: progressData } : i);
-                const updatedSpaces = spaces.map(s => s.id === activeSpace.id ? { ...s, ideas: updatedIdeas } : s);
-                setSpaces(updatedSpaces);
-                setActiveSpace(updatedSpaces.find(s => s.id === activeSpace.id) || null);
-                setSelectedFeature(updatedIdeas.find(i => i.id === selectedFeature.id) || null);
-                setView('detail');
+            onUpdate={async (progressData) => {
+              if (await useCredit()) {
+                try {
+                  await fetch(`/api/ideas/${selectedFeature.id}`, {
+                    method: 'PUT',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ progress: progressData })
+                  });
+                  
+                  const updatedIdeas = activeSpace.ideas.map(i => i.id === selectedFeature.id ? { ...i, progress: progressData } : i);
+                  const updatedSpaces = spaces.map(s => s.id === activeSpace.id ? { ...s, ideas: updatedIdeas } : s);
+                  setSpaces(updatedSpaces);
+                  setActiveSpace(updatedSpaces.find(s => s.id === activeSpace.id) || null);
+                  setSelectedFeature(updatedIdeas.find(i => i.id === selectedFeature.id) || null);
+                  setView('detail');
+                } catch (error) {
+                  console.error('Failed to update idea progress:', error);
+                }
               }
             }}
             onCancel={() => setView('detail')}
@@ -366,12 +531,24 @@ export default function App() {
           </div>
         )}
 
-        {view === 'new_idea' && activeSpace && <NewIdeaWorkflow project={activeSpace} onSave={(idea) => {
-          if (useCredit()) {
-            const updated = spaces.map(p => p.id === activeSpace.id ? { ...p, lastUpdated: new Date().toISOString(), ideas: [idea, ...p.ideas] } : p);
-            setSpaces(updated);
-            setActiveSpace(updated.find(p => p.id === activeSpace.id) || null);
-            setView('roadmap');
+        {view === 'new_idea' && activeSpace && <NewIdeaWorkflow project={activeSpace} onSave={async (idea) => {
+          if (await useCredit()) {
+            try {
+              const res = await fetch(`/api/spaces/${activeSpace.id}/ideas`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify(idea)
+              });
+              const { id } = await res.json();
+              const newIdea = { ...idea, id };
+              
+              const updated = spaces.map(p => p.id === activeSpace.id ? { ...p, lastUpdated: new Date().toISOString(), ideas: [newIdea, ...p.ideas] } : p);
+              setSpaces(updated);
+              setActiveSpace(updated.find(p => p.id === activeSpace.id) || null);
+              setView('roadmap');
+            } catch (error) {
+              console.error('Failed to save idea:', error);
+            }
           }
         }} onCancel={() => setView('roadmap')} />}
 
@@ -393,13 +570,24 @@ export default function App() {
                     </div>
                  </div>
                  <div className="pt-4 flex gap-3">
-                    <button onClick={() => {
+                    <button onClick={async () => {
                        const nameInput = document.getElementById('edit-name') as HTMLInputElement;
                        const iconInput = document.getElementById('edit-icon') as HTMLInputElement;
                        const name = nameInput.value;
                        const icon = iconInput.value;
-                       setSpaces(spaces.map(s => s.id === editingSpace.id ? { ...s, name, icon } : s));
-                       setView('projects');
+                       
+                       try {
+                         await fetch(`/api/spaces/${editingSpace.id}`, {
+                           method: 'PUT',
+                           headers: { 'Content-Type': 'application/json' },
+                           body: JSON.stringify({ name, icon, archived: editingSpace.archived, lastUpdated: new Date().toISOString() })
+                         });
+                         
+                         setSpaces(spaces.map(s => s.id === editingSpace.id ? { ...s, name, icon } : s));
+                         setView('projects');
+                       } catch (error) {
+                         console.error('Failed to update space:', error);
+                       }
                     }} className="flex-1 py-4 bg-indigo-600 text-white font-bold text-[10px] uppercase tracking-[0.2em] rounded-xl shadow-lg">Commit Changes</button>
                     <button onClick={() => setView('projects')} className="px-6 py-4 bg-white text-slate-400 font-bold text-[10px] uppercase tracking-widest rounded-xl border border-slate-200">Cancel</button>
                  </div>
@@ -466,14 +654,29 @@ export default function App() {
                 </div>
               </div>
               <div className="pt-4 flex gap-3">
-                <button onClick={() => {
+                <button onClick={async () => {
                   const nameInput = document.getElementById('proj-name-input') as HTMLInputElement;
                   const iconInput = document.getElementById('icon-input') as HTMLInputElement;
                   const val = nameInput.value;
                   const icon = generatedIcon || iconInput?.value || '🛠️';
-                  if (val) setSpaces([{ id: Date.now(), name: val, platform: 'Lovable', icon: icon, color: 'Indigo', ideas: [], archived: false, lastUpdated: new Date().toISOString() }, ...spaces]);
-                  setGeneratedIcon(null);
-                  setView('projects');
+                  
+                  if (val) {
+                    try {
+                      const spaceData = { name: val, platform: 'Lovable', icon: icon, color: 'Indigo', archived: false, lastUpdated: new Date().toISOString() };
+                      const res = await fetch('/api/spaces', {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify(spaceData)
+                      });
+                      const { id } = await res.json();
+                      
+                      setSpaces([{ ...spaceData, id, ideas: [] }, ...spaces]);
+                      setGeneratedIcon(null);
+                      setView('projects');
+                    } catch (error) {
+                      console.error('Failed to create space:', error);
+                    }
+                  }
                 }} className="flex-1 py-4 bg-indigo-600 text-white font-bold text-[10px] uppercase tracking-[0.2em] rounded-xl hover:bg-indigo-700 shadow-lg shadow-indigo-100 transition-all">Deploy Workspace</button>
                 <button onClick={() => { setGeneratedIcon(null); setView('projects'); }} className="px-6 py-4 bg-white text-slate-400 font-bold text-[10px] uppercase tracking-widest rounded-xl border border-slate-200">Abort</button>
               </div>

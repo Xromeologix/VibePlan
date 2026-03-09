@@ -33,7 +33,7 @@ export async function generateIcon(prompt: string) {
     const response = await ai.models.generateContent({
       model: imageModelName,
       contents: {
-        parts: [{ text: `A clean, minimalist, high-contrast cyberpunk icon for a project management tool. Subject: ${prompt}. Style: Neon accents, dark background, vector style, flat design.` }]
+        parts: [{ text: `A clean, professional, high-quality icon for a project management tool. Subject: ${prompt}. Style: Modern, minimalist, vector style, flat design.` }]
       },
       config: {
         imageConfig: {
