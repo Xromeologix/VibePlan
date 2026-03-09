@@ -5,6 +5,7 @@ import Database from "better-sqlite3";
 import path from "path";
 import { fileURLToPath } from "url";
 import dotenv from "dotenv";
+import cors from "cors";
 
 dotenv.config();
 
@@ -58,6 +59,17 @@ async function startServer() {
 
   app.set('trust proxy', 1); // Trust the first proxy (Nginx/Cloudflare)
   
+  // Enable CORS for the Cloudflare domain
+  app.use(cors({
+    origin: [
+      "https://vibeplan.pages.dev",
+      "https://ais-dev-73vzfbuac6sfbv2mnnolhm-170379606144.asia-southeast1.run.app",
+      "https://ais-pre-73vzfbuac6sfbv2mnnolhm-170379606144.asia-southeast1.run.app",
+      "http://localhost:3000"
+    ],
+    credentials: true
+  }));
+
   // Explicitly allow popups to communicate with the main window (fixes COOP issues)
   app.use((req, res, next) => {
     res.setHeader("Cross-Origin-Opener-Policy", "unsafe-none");

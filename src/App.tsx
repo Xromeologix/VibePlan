@@ -71,7 +71,10 @@ export default function App() {
 
   const fetchUser = async () => {
     try {
-      const res = await fetch('/api/auth/me');
+      const apiBase = window.location.origin.includes('pages.dev') 
+        ? 'https://ais-dev-73vzfbuac6sfbv2mnnolhm-170379606144.asia-southeast1.run.app' 
+        : '';
+      const res = await fetch(`${apiBase}/api/auth/me`);
       if (res.ok) {
         const userData = await res.json();
         setUser(userData);
@@ -90,7 +93,10 @@ export default function App() {
 
   const fetchSpaces = async () => {
     try {
-      const res = await fetch('/api/spaces');
+      const apiBase = window.location.origin.includes('pages.dev') 
+        ? 'https://ais-dev-73vzfbuac6sfbv2mnnolhm-170379606144.asia-southeast1.run.app' 
+        : '';
+      const res = await fetch(`${apiBase}/api/spaces`);
       if (res.ok) {
         const spacesData = await res.json();
         setSpaces(spacesData);
@@ -109,7 +115,12 @@ export default function App() {
     }
 
     try {
-      const res = await fetch('/api/auth/url');
+      // If we are on Cloudflare Pages, we need to point to the AI Studio backend
+      const apiBase = window.location.origin.includes('pages.dev') 
+        ? 'https://ais-dev-73vzfbuac6sfbv2mnnolhm-170379606144.asia-southeast1.run.app' 
+        : '';
+
+      const res = await fetch(`${apiBase}/api/auth/url`);
       const data = await res.json();
       
       if (!res.ok) {
@@ -121,14 +132,17 @@ export default function App() {
       authWindow.location.href = data.url;
     } catch (error) {
       console.error('Login error:', error);
-      alert('Network error during login. Please try again.');
+      alert(`Network error during login. Make sure the backend is running at the correct URL. Error: ${error instanceof Error ? error.message : 'Unknown'}`);
       authWindow.close();
     }
   };
 
   const handleLogout = async () => {
     try {
-      await fetch('/api/auth/logout', { method: 'POST' });
+      const apiBase = window.location.origin.includes('pages.dev') 
+        ? 'https://ais-dev-73vzfbuac6sfbv2mnnolhm-170379606144.asia-southeast1.run.app' 
+        : '';
+      await fetch(`${apiBase}/api/auth/logout`, { method: 'POST' });
       setUser(null);
       setSpaces([]);
       setView('projects');
