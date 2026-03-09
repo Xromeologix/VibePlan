@@ -110,10 +110,18 @@ export default function App() {
 
     try {
       const res = await fetch('/api/auth/url');
-      const { url } = await res.json();
-      authWindow.location.href = url;
+      const data = await res.json();
+      
+      if (!res.ok) {
+        alert(data.error || 'Failed to generate login URL. Please check your settings.');
+        authWindow.close();
+        return;
+      }
+
+      authWindow.location.href = data.url;
     } catch (error) {
       console.error('Login error:', error);
+      alert('Network error during login. Please try again.');
       authWindow.close();
     }
   };

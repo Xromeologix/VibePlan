@@ -80,10 +80,26 @@ async function startServer() {
 
   // Auth Routes
   app.get("/api/auth/url", (req, res) => {
+    const clientId = process.env.GOOGLE_CLIENT_ID;
+    
+    if (!clientId) {
+      console.error("Missing GOOGLE_CLIENT_ID");
+      return res.status(500).json({ 
+        error: "GOOGLE_CLIENT_ID is missing. Please check your AI Studio Settings -> Environment Variables." 
+      });
+    }
+
+    if (!APP_URL) {
+      console.error("Missing APP_URL");
+      return res.status(500).json({ 
+        error: "APP_URL is missing. Please set it to your website URL in AI Studio Settings." 
+      });
+    }
+
     const rootUrl = "https://accounts.google.com/o/oauth2/v2/auth";
     const options = {
       redirect_uri: `${APP_URL}/auth/callback`,
-      client_id: process.env.GOOGLE_CLIENT_ID!,
+      client_id: clientId,
       access_type: "offline",
       response_type: "code",
       prompt: "consent",
@@ -94,7 +110,9 @@ async function startServer() {
     };
 
     const qs = new URLSearchParams(options);
-    res.json({ url: `${rootUrl}?${qs.toString()}` });
+    const url = `${rootUrl}?${qs.toString()}`;
+    console.log("Generated Auth URL for Client ID:", clientId.substring(0, 10) + "...");
+    res.json({ url });
   });
 
   app.get("/auth/callback", async (req, res) => {
