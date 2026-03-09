@@ -54,6 +54,7 @@ async function startServer() {
   const app = express();
   const PORT = 3000;
 
+  app.set('trust proxy', 1); // Trust the first proxy (Nginx/Cloudflare)
   app.use(express.json());
   app.use(
     session({

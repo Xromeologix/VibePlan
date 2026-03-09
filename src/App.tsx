@@ -131,10 +131,15 @@ export default function App() {
 
   useEffect(() => {
     const handleMessage = (event: MessageEvent) => {
+      // Allow messages from the same origin to support custom domains/Cloudflare
       const origin = event.origin;
-      if (!origin.endsWith('.run.app') && !origin.includes('localhost')) {
-        return;
-      }
+      const isAllowedOrigin = 
+        origin === window.location.origin || 
+        origin.endsWith('.run.app') || 
+        origin.includes('localhost');
+
+      if (!isAllowedOrigin) return;
+
       if (event.data?.type === 'OAUTH_AUTH_SUCCESS') {
         fetchUser();
       }
