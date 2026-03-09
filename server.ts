@@ -50,6 +50,8 @@ db.exec(`
   );
 `);
 
+const APP_URL = (process.env.APP_URL || "").replace(/\/$/, "");
+
 async function startServer() {
   const app = express();
   const PORT = 3000;
@@ -73,7 +75,7 @@ async function startServer() {
   app.get("/api/auth/url", (req, res) => {
     const rootUrl = "https://accounts.google.com/o/oauth2/v2/auth";
     const options = {
-      redirect_uri: `${process.env.APP_URL}/auth/callback`,
+      redirect_uri: `${APP_URL}/auth/callback`,
       client_id: process.env.GOOGLE_CLIENT_ID!,
       access_type: "offline",
       response_type: "code",
@@ -101,10 +103,16 @@ async function startServer() {
           code,
           client_id: process.env.GOOGLE_CLIENT_ID!,
           client_secret: process.env.GOOGLE_CLIENT_SECRET!,
-          redirect_uri: `${process.env.APP_URL}/auth/callback`,
+          redirect_uri: `${APP_URL}/auth/callback`,
           grant_type: "authorization_code",
         }),
       });
+
+      if (!tokenResponse.ok) {
+        const errorData = await tokenResponse.text();
+        console.error("Token exchange failed:", errorData);
+        return res.status(500).send(`Token exchange failed: ${errorData}`);
+      }
 
       const { access_token } = await tokenResponse.json();
 
@@ -115,6 +123,10 @@ async function startServer() {
           headers: { Authorization: `Bearer ${access_token}` },
         }
       );
+
+      if (!userResponse.ok) {
+        return res.status(500).send("Failed to get user info");
+      }
 
       const googleUser = await userResponse.json();
 
@@ -144,22 +156,27 @@ async function startServer() {
 
       res.send(`
         <html>
-          <body>
-            <script>
-              if (window.opener) {
-                window.opener.postMessage({ type: 'OAUTH_AUTH_SUCCESS' }, '*');
-                window.close();
-              } else {
-                window.location.href = '/';
-              }
-            </script>
-            <p>Authentication successful. This window should close automatically.</p>
+          <body style="font-family: sans-serif; display: flex; align-items: center; justify-content: center; height: 100vh; margin: 0; background: #fafafa;">
+            <div style="text-align: center; padding: 2rem; background: white; border-radius: 1rem; shadow: 0 4px 6px rgba(0,0,0,0.1); border: 1px solid #eee;">
+              <h2 style="color: #4f46e5; margin-bottom: 0.5rem;">Authentication Successful</h2>
+              <p style="color: #64748b; font-size: 0.875rem;">Syncing your vibes... this window will close shortly.</p>
+              <script>
+                setTimeout(() => {
+                  if (window.opener) {
+                    window.opener.postMessage({ type: 'OAUTH_AUTH_SUCCESS' }, '*');
+                    window.close();
+                  } else {
+                    window.location.href = '/';
+                  }
+                }, 1000);
+              </script>
+            </div>
           </body>
         </html>
       `);
     } catch (error) {
       console.error("Auth error:", error);
-      res.status(500).send("Authentication failed");
+      res.status(500).send(`Authentication failed: ${error instanceof Error ? error.message : 'Unknown error'}`);
     }
   });
 
