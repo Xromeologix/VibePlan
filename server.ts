@@ -57,6 +57,13 @@ async function startServer() {
   const PORT = 3000;
 
   app.set('trust proxy', 1); // Trust the first proxy (Nginx/Cloudflare)
+  
+  // Explicitly allow popups to communicate with the main window (fixes COOP issues)
+  app.use((req, res, next) => {
+    res.setHeader("Cross-Origin-Opener-Policy", "unsafe-none");
+    next();
+  });
+
   app.use(express.json());
   app.use(
     session({
