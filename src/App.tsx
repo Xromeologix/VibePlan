@@ -40,6 +40,12 @@ export default function App() {
   const [view, setView] = useState('projects'); 
   const [user, setUser] = useState<User | null>(null);
   const [isLoading, setIsLoading] = useState(true);
+  const [authMode, setAuthMode] = useState<'login' | 'signup'>('login');
+  const [email, setEmail] = useState('');
+  const [password, setPassword] = useState('');
+  const [name, setName] = useState('');
+  const [authError, setAuthError] = useState<string | null>(null);
+  const [isAuthLoading, setIsAuthLoading] = useState(false);
   const [activeSpace, setActiveSpace] = useState<Space | null>(null);
   const [selectedFeature, setSelectedFeature] = useState<Idea | null>(null);
   const [showArchived, setShowArchived] = useState(false);
@@ -74,7 +80,7 @@ export default function App() {
       const apiBase = window.location.origin.includes('pages.dev') 
         ? 'https://ais-dev-73vzfbuac6sfbv2mnnolhm-170379606144.asia-southeast1.run.app' 
         : '';
-      const res = await fetch(`${apiBase}/api/auth/me`);
+      const res = await fetch(`${apiBase}/api/auth/me`, { credentials: 'include' });
       if (res.ok) {
         const userData = await res.json();
         setUser(userData);
@@ -96,7 +102,7 @@ export default function App() {
       const apiBase = window.location.origin.includes('pages.dev') 
         ? 'https://ais-dev-73vzfbuac6sfbv2mnnolhm-170379606144.asia-southeast1.run.app' 
         : '';
-      const res = await fetch(`${apiBase}/api/spaces`);
+      const res = await fetch(`${apiBase}/api/spaces`, { credentials: 'include' });
       if (res.ok) {
         const spacesData = await res.json();
         setSpaces(spacesData);
@@ -120,7 +126,7 @@ export default function App() {
         ? 'https://ais-dev-73vzfbuac6sfbv2mnnolhm-170379606144.asia-southeast1.run.app' 
         : '';
 
-      const res = await fetch(`${apiBase}/api/auth/url`);
+      const res = await fetch(`${apiBase}/api/auth/url`, { credentials: 'include' });
       const data = await res.json();
       
       if (!res.ok) {
@@ -137,12 +143,55 @@ export default function App() {
     }
   };
 
+  const handleEmailAuth = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setAuthError(null);
+    setIsAuthLoading(true);
+
+    try {
+      const apiBase = window.location.origin.includes('pages.dev') 
+        ? 'https://ais-dev-73vzfbuac6sfbv2mnnolhm-170379606144.asia-southeast1.run.app' 
+        : '';
+      
+      const endpoint = authMode === 'signup' ? '/api/auth/signup' : '/api/auth/login';
+      const body = authMode === 'signup' ? { email, password, name } : { email, password };
+
+      const res = await fetch(`${apiBase}${endpoint}`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(body),
+        credentials: 'include'
+      });
+
+      const data = await res.json();
+
+      if (res.ok) {
+        setUser(data);
+        setCredits(prev => ({
+          ...prev,
+          monthlyLimit: data.monthly_limit,
+          usedThisMonth: data.credits_used
+        }));
+      } else {
+        setAuthError(data.error || 'Authentication failed');
+      }
+    } catch (error) {
+      console.error('Auth error:', error);
+      setAuthError('Network error. Please try again.');
+    } finally {
+      setIsAuthLoading(false);
+    }
+  };
+
   const handleLogout = async () => {
     try {
       const apiBase = window.location.origin.includes('pages.dev') 
         ? 'https://ais-dev-73vzfbuac6sfbv2mnnolhm-170379606144.asia-southeast1.run.app' 
         : '';
-      await fetch(`${apiBase}/api/auth/logout`, { method: 'POST' });
+      await fetch(`${apiBase}/api/auth/logout`, { 
+        method: 'POST',
+        credentials: 'include'
+      });
       setUser(null);
       setSpaces([]);
       setView('projects');
@@ -189,10 +238,14 @@ export default function App() {
     setCredits(prev => ({ ...prev, usedThisMonth: newUsed }));
     
     try {
-      await fetch('/api/user/credits', {
+      const apiBase = window.location.origin.includes('pages.dev') 
+        ? 'https://ais-dev-73vzfbuac6sfbv2mnnolhm-170379606144.asia-southeast1.run.app' 
+        : '';
+      await fetch(`${apiBase}/api/user/credits`, {
         method: 'PUT',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ credits_used: newUsed })
+        body: JSON.stringify({ credits_used: newUsed }),
+        credentials: 'include'
       });
     } catch (error) {
       console.error('Failed to update credits:', error);
@@ -258,21 +311,91 @@ export default function App() {
         <h1 className="text-4xl font-bold tracking-tighter text-slate-900 mb-2">VibePlan</h1>
         <p className="text-slate-500 text-sm font-medium uppercase tracking-[0.3em] mb-12">Architecture Synthesis Terminal</p>
         
-        <div className="max-w-md w-full bg-white border border-slate-200 rounded-3xl p-10 shadow-xl shadow-slate-200/50 text-center space-y-8">
-          <div className="space-y-2">
-            <h2 className="text-xl font-bold text-slate-900">Welcome to the Environment</h2>
-            <p className="text-slate-400 text-xs">Authorize your session to begin synthesizing vibes.</p>
+        <div className="max-w-md w-full bg-white border border-slate-200 rounded-3xl p-10 shadow-xl shadow-slate-200/50 space-y-8">
+          <div className="space-y-2 text-center">
+            <h2 className="text-xl font-bold text-slate-900">{authMode === 'login' ? 'Welcome Back' : 'Initialize Account'}</h2>
+            <p className="text-slate-400 text-xs">{authMode === 'login' ? 'Authorize your session to continue.' : 'Create your credentials to begin synthesizing.'}</p>
+          </div>
+
+          <form onSubmit={handleEmailAuth} className="space-y-4">
+            {authMode === 'signup' && (
+              <div className="space-y-1">
+                <label className="text-[10px] font-bold text-slate-400 uppercase tracking-widest ml-1">Name</label>
+                <input 
+                  type="text" 
+                  value={name}
+                  onChange={(e) => setName(e.target.value)}
+                  className="w-full px-4 py-3 bg-slate-50 border border-slate-200 rounded-xl text-sm focus:bg-white focus:ring-2 focus:ring-indigo-500/20 outline-none transition-all"
+                  placeholder="Your Name"
+                />
+              </div>
+            )}
+            <div className="space-y-1">
+              <label className="text-[10px] font-bold text-slate-400 uppercase tracking-widest ml-1">Email</label>
+              <input 
+                type="email" 
+                required
+                value={email}
+                onChange={(e) => setEmail(e.target.value)}
+                className="w-full px-4 py-3 bg-slate-50 border border-slate-200 rounded-xl text-sm focus:bg-white focus:ring-2 focus:ring-indigo-500/20 outline-none transition-all"
+                placeholder="name@example.com"
+              />
+            </div>
+            <div className="space-y-1">
+              <label className="text-[10px] font-bold text-slate-400 uppercase tracking-widest ml-1">Password</label>
+              <input 
+                type="password" 
+                required
+                value={password}
+                onChange={(e) => setPassword(e.target.value)}
+                className="w-full px-4 py-3 bg-slate-50 border border-slate-200 rounded-xl text-sm focus:bg-white focus:ring-2 focus:ring-indigo-500/20 outline-none transition-all"
+                placeholder="••••••••"
+              />
+            </div>
+
+            {authError && (
+              <div className="p-3 bg-rose-50 border border-rose-100 rounded-xl flex items-center gap-2 text-rose-600 text-[10px] font-bold uppercase tracking-widest">
+                <AlertCircle size={14} />
+                {authError}
+              </div>
+            )}
+
+            <button 
+              type="submit"
+              disabled={isAuthLoading}
+              className="w-full py-4 bg-slate-900 text-white rounded-xl font-bold text-xs uppercase tracking-[0.2em] shadow-lg hover:bg-slate-800 hover:scale-[1.02] transition-all flex items-center justify-center gap-3 disabled:opacity-50"
+            >
+              {isAuthLoading ? <Loader2 className="w-4 h-4 animate-spin" /> : (authMode === 'login' ? 'Login' : 'Create Account')}
+            </button>
+          </form>
+
+          <div className="relative">
+            <div className="absolute inset-0 flex items-center">
+              <div className="w-full border-t border-slate-100"></div>
+            </div>
+            <div className="relative flex justify-center text-[10px] uppercase tracking-widest">
+              <span className="px-4 bg-white text-slate-300 font-bold">Or</span>
+            </div>
           </div>
           
           <button 
             onClick={handleLogin}
-            className="w-full py-4 bg-indigo-600 text-white rounded-xl font-bold text-xs uppercase tracking-[0.2em] shadow-lg shadow-indigo-100 hover:bg-indigo-700 hover:scale-[1.02] transition-all flex items-center justify-center gap-3"
+            className="w-full py-4 bg-white border border-slate-200 text-slate-600 rounded-xl font-bold text-xs uppercase tracking-[0.2em] shadow-sm hover:bg-slate-50 hover:scale-[1.02] transition-all flex items-center justify-center gap-3"
           >
-            <Globe size={18} />
+            <Globe size={18} className="text-indigo-500" />
             Connect via Google
           </button>
+
+          <div className="text-center">
+            <button 
+              onClick={() => setAuthMode(authMode === 'login' ? 'signup' : 'login')}
+              className="text-[10px] font-bold text-indigo-600 uppercase tracking-widest hover:underline"
+            >
+              {authMode === 'login' ? "Don't have an account? Sign Up" : "Already have an account? Login"}
+            </button>
+          </div>
           
-          <div className="pt-6 border-t border-slate-100">
+          <div className="pt-6 border-t border-slate-100 text-center">
             <p className="text-[10px] text-slate-300 font-bold uppercase tracking-widest">Secure Protocol 1.4 Activated</p>
           </div>
         </div>
@@ -445,10 +568,14 @@ export default function App() {
             onUpdate={async (progressData) => {
               if (await useCredit()) {
                 try {
-                  await fetch(`/api/ideas/${selectedFeature.id}`, {
+                  const apiBase = window.location.origin.includes('pages.dev') 
+                    ? 'https://ais-dev-73vzfbuac6sfbv2mnnolhm-170379606144.asia-southeast1.run.app' 
+                    : '';
+                  await fetch(`${apiBase}/api/ideas/${selectedFeature.id}`, {
                     method: 'PUT',
                     headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ progress: progressData })
+                    body: JSON.stringify({ progress: progressData }),
+                    credentials: 'include'
                   });
                   
                   const updatedIdeas = activeSpace.ideas.map(i => i.id === selectedFeature.id ? { ...i, progress: progressData } : i);
@@ -561,10 +688,14 @@ export default function App() {
         {view === 'new_idea' && activeSpace && <NewIdeaWorkflow project={activeSpace} onSave={async (idea) => {
           if (await useCredit()) {
             try {
-              const res = await fetch(`/api/spaces/${activeSpace.id}/ideas`, {
+              const apiBase = window.location.origin.includes('pages.dev') 
+                ? 'https://ais-dev-73vzfbuac6sfbv2mnnolhm-170379606144.asia-southeast1.run.app' 
+                : '';
+              const res = await fetch(`${apiBase}/api/spaces/${activeSpace.id}/ideas`, {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify(idea)
+                body: JSON.stringify(idea),
+                credentials: 'include'
               });
               const { id } = await res.json();
               const newIdea = { ...idea, id };
@@ -604,10 +735,14 @@ export default function App() {
                        const icon = iconInput.value;
                        
                        try {
-                         await fetch(`/api/spaces/${editingSpace.id}`, {
+                         const apiBase = window.location.origin.includes('pages.dev') 
+                           ? 'https://ais-dev-73vzfbuac6sfbv2mnnolhm-170379606144.asia-southeast1.run.app' 
+                           : '';
+                         await fetch(`${apiBase}/api/spaces/${editingSpace.id}`, {
                            method: 'PUT',
                            headers: { 'Content-Type': 'application/json' },
-                           body: JSON.stringify({ name, icon, archived: editingSpace.archived, lastUpdated: new Date().toISOString() })
+                           body: JSON.stringify({ name, icon, archived: editingSpace.archived, lastUpdated: new Date().toISOString() }),
+                           credentials: 'include'
                          });
                          
                          setSpaces(spaces.map(s => s.id === editingSpace.id ? { ...s, name, icon } : s));
@@ -689,11 +824,15 @@ export default function App() {
                   
                   if (val) {
                     try {
+                      const apiBase = window.location.origin.includes('pages.dev') 
+                        ? 'https://ais-dev-73vzfbuac6sfbv2mnnolhm-170379606144.asia-southeast1.run.app' 
+                        : '';
                       const spaceData = { name: val, platform: 'Lovable', icon: icon, color: 'Indigo', archived: false, lastUpdated: new Date().toISOString() };
-                      const res = await fetch('/api/spaces', {
+                      const res = await fetch(`${apiBase}/api/spaces`, {
                         method: 'POST',
                         headers: { 'Content-Type': 'application/json' },
-                        body: JSON.stringify(spaceData)
+                        body: JSON.stringify(spaceData),
+                        credentials: 'include'
                       });
                       const { id } = await res.json();
                       

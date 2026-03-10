@@ -6,6 +6,7 @@ import path from "path";
 import { fileURLToPath } from "url";
 import dotenv from "dotenv";
 import cors from "cors";
+import bcrypt from "bcryptjs";
 
 dotenv.config();
 
@@ -19,9 +20,10 @@ db.exec(`
   CREATE TABLE IF NOT EXISTS users (
     id INTEGER PRIMARY KEY AUTOINCREMENT,
     google_id TEXT UNIQUE,
-    email TEXT,
+    email TEXT UNIQUE,
     name TEXT,
     picture TEXT,
+    password_hash TEXT,
     credits_used INTEGER DEFAULT 0,
     monthly_limit INTEGER DEFAULT 100
   );
@@ -77,6 +79,49 @@ async function startServer() {
   });
 
   app.use(express.json());
+  
+  // Email/Password Auth Routes
+  app.post("/api/auth/signup", async (req, res) => {
+    const { email, password, name } = req.body;
+    if (!email || !password) return res.status(400).json({ error: "Email and password are required" });
+
+    try {
+      const existingUser = db.prepare("SELECT * FROM users WHERE email = ?").get(email);
+      if (existingUser) return res.status(400).json({ error: "User already exists" });
+
+      const hashedPassword = await bcrypt.hash(password, 10);
+      const result = db.prepare(
+        "INSERT INTO users (email, password_hash, name) VALUES (?, ?, ?)"
+      ).run(email, hashedPassword, name || email.split("@")[0]);
+
+      (req.session as any).userId = result.lastInsertRowid;
+      const user = db.prepare("SELECT * FROM users WHERE id = ?").get(result.lastInsertRowid);
+      res.json(user);
+    } catch (error) {
+      console.error("Signup error:", error);
+      res.status(500).json({ error: "Failed to create user" });
+    }
+  });
+
+  app.post("/api/auth/login", async (req, res) => {
+    const { email, password } = req.body;
+    if (!email || !password) return res.status(400).json({ error: "Email and password are required" });
+
+    try {
+      const user = db.prepare("SELECT * FROM users WHERE email = ?").get(email) as any;
+      if (!user || !user.password_hash) return res.status(401).json({ error: "Invalid credentials" });
+
+      const isValid = await bcrypt.compare(password, user.password_hash);
+      if (!isValid) return res.status(401).json({ error: "Invalid credentials" });
+
+      (req.session as any).userId = user.id;
+      res.json(user);
+    } catch (error) {
+      console.error("Login error:", error);
+      res.status(500).json({ error: "Failed to login" });
+    }
+  });
+
   app.use(
     session({
       secret: process.env.SESSION_SECRET || "vibeplan-secret-key",
