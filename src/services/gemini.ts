@@ -1,7 +1,7 @@
 import { GoogleGenAI } from "@google/genai";
 
 const apiKey = process.env.GEMINI_API_KEY || "";
-const modelName = "gemini-2.5-flash-preview-09-2025";
+const modelName = "gemini-3-flash-preview";
 const imageModelName = "gemini-2.5-flash-image";
 
 export async function callGemini(payload: string, systemPrompt: string) {

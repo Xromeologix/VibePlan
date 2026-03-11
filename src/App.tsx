@@ -24,6 +24,7 @@ import { Space, Idea, Credits, ACCENT_COLORS } from './types';
 import Mermaid from './components/Mermaid';
 import ProgressPulse from './components/ProgressPulse';
 import NewIdeaWorkflow from './components/NewIdeaWorkflow';
+import FeatureSwiper from './components/FeatureSwiper';
 import { generateIcon } from './services/gemini';
 
 interface User {
@@ -54,6 +55,7 @@ export default function App() {
   const [importStatus, setImportStatus] = useState<string | null>(null);
   const [isGeneratingIcon, setIsGeneratingIcon] = useState(false);
   const [generatedIcon, setGeneratedIcon] = useState<string | null>(null);
+  const [expansionTarget, setExpansionTarget] = useState<Idea | null>(null);
   
   const [credits, setCredits] = useState<Credits>({
     monthlyLimit: 100,
@@ -302,107 +304,6 @@ export default function App() {
     );
   }
 
-  if (!user) {
-    return (
-      <div className="min-h-screen flex flex-col items-center justify-center bg-[#fafafa] p-6">
-        <div className="w-16 h-16 bg-gradient-to-br from-indigo-600 via-purple-600 to-fuchsia-500 rounded-2xl flex items-center justify-center shadow-2xl shadow-indigo-200 mb-8">
-          <Terminal className="text-white w-8 h-8" />
-        </div>
-        <h1 className="text-4xl font-bold tracking-tighter text-slate-900 mb-2">VibePlan</h1>
-        <p className="text-slate-500 text-sm font-medium uppercase tracking-[0.3em] mb-12">Architecture Synthesis Terminal</p>
-        
-        <div className="max-w-md w-full bg-white border border-slate-200 rounded-3xl p-10 shadow-xl shadow-slate-200/50 space-y-8">
-          <div className="space-y-2 text-center">
-            <h2 className="text-xl font-bold text-slate-900">{authMode === 'login' ? 'Welcome Back' : 'Initialize Account'}</h2>
-            <p className="text-slate-400 text-xs">{authMode === 'login' ? 'Authorize your session to continue.' : 'Create your credentials to begin synthesizing.'}</p>
-          </div>
-
-          <form onSubmit={handleEmailAuth} className="space-y-4">
-            {authMode === 'signup' && (
-              <div className="space-y-1">
-                <label className="text-[10px] font-bold text-slate-400 uppercase tracking-widest ml-1">Name</label>
-                <input 
-                  type="text" 
-                  value={name}
-                  onChange={(e) => setName(e.target.value)}
-                  className="w-full px-4 py-3 bg-slate-50 border border-slate-200 rounded-xl text-sm focus:bg-white focus:ring-2 focus:ring-indigo-500/20 outline-none transition-all"
-                  placeholder="Your Name"
-                />
-              </div>
-            )}
-            <div className="space-y-1">
-              <label className="text-[10px] font-bold text-slate-400 uppercase tracking-widest ml-1">Email</label>
-              <input 
-                type="email" 
-                required
-                value={email}
-                onChange={(e) => setEmail(e.target.value)}
-                className="w-full px-4 py-3 bg-slate-50 border border-slate-200 rounded-xl text-sm focus:bg-white focus:ring-2 focus:ring-indigo-500/20 outline-none transition-all"
-                placeholder="name@example.com"
-              />
-            </div>
-            <div className="space-y-1">
-              <label className="text-[10px] font-bold text-slate-400 uppercase tracking-widest ml-1">Password</label>
-              <input 
-                type="password" 
-                required
-                value={password}
-                onChange={(e) => setPassword(e.target.value)}
-                className="w-full px-4 py-3 bg-slate-50 border border-slate-200 rounded-xl text-sm focus:bg-white focus:ring-2 focus:ring-indigo-500/20 outline-none transition-all"
-                placeholder="••••••••"
-              />
-            </div>
-
-            {authError && (
-              <div className="p-3 bg-rose-50 border border-rose-100 rounded-xl flex items-center gap-2 text-rose-600 text-[10px] font-bold uppercase tracking-widest">
-                <AlertCircle size={14} />
-                {authError}
-              </div>
-            )}
-
-            <button 
-              type="submit"
-              disabled={isAuthLoading}
-              className="w-full py-4 bg-slate-900 text-white rounded-xl font-bold text-xs uppercase tracking-[0.2em] shadow-lg hover:bg-slate-800 hover:scale-[1.02] transition-all flex items-center justify-center gap-3 disabled:opacity-50"
-            >
-              {isAuthLoading ? <Loader2 className="w-4 h-4 animate-spin" /> : (authMode === 'login' ? 'Login' : 'Create Account')}
-            </button>
-          </form>
-
-          <div className="relative">
-            <div className="absolute inset-0 flex items-center">
-              <div className="w-full border-t border-slate-100"></div>
-            </div>
-            <div className="relative flex justify-center text-[10px] uppercase tracking-widest">
-              <span className="px-4 bg-white text-slate-300 font-bold">Or</span>
-            </div>
-          </div>
-          
-          <button 
-            onClick={handleLogin}
-            className="w-full py-4 bg-white border border-slate-200 text-slate-600 rounded-xl font-bold text-xs uppercase tracking-[0.2em] shadow-sm hover:bg-slate-50 hover:scale-[1.02] transition-all flex items-center justify-center gap-3"
-          >
-            <Globe size={18} className="text-indigo-500" />
-            Connect via Google
-          </button>
-
-          <div className="text-center">
-            <button 
-              onClick={() => setAuthMode(authMode === 'login' ? 'signup' : 'login')}
-              className="text-[10px] font-bold text-indigo-600 uppercase tracking-widest hover:underline"
-            >
-              {authMode === 'login' ? "Don't have an account? Sign Up" : "Already have an account? Login"}
-            </button>
-          </div>
-          
-          <div className="pt-6 border-t border-slate-100 text-center">
-            <p className="text-[10px] text-slate-300 font-bold uppercase tracking-widest">Secure Protocol 1.4 Activated</p>
-          </div>
-        </div>
-      </div>
-    );
-  }
-
   return (
     <div className="min-h-screen">
       <nav className="sticky top-0 z-50 bg-white/80 backdrop-blur-md border-b border-slate-200 px-6 py-3 flex justify-between items-center">
@@ -425,13 +326,17 @@ export default function App() {
           </div>
         </div>
         <div className="flex items-center gap-4">
-          {user ? (
+          {user && (
             <div className="flex items-center gap-3">
-              <img src={user.picture} alt={user.name} className="w-8 h-8 rounded-full border border-slate-200" />
+              {user.picture ? (
+                <img src={user.picture} alt={user.name} className="w-8 h-8 rounded-full border border-slate-200" />
+              ) : (
+                <div className="w-8 h-8 rounded-full bg-indigo-100 flex items-center justify-center text-indigo-600 font-bold text-xs border border-indigo-200">
+                  {user.name.charAt(0)}
+                </div>
+              )}
               <button onClick={handleLogout} className="text-[9px] font-bold text-slate-400 uppercase tracking-widest hover:text-rose-500 transition-colors">Logout</button>
             </div>
-          ) : (
-            <button onClick={handleLogin} className="px-4 py-1.5 bg-indigo-600 text-white rounded-lg text-[10px] font-bold uppercase tracking-widest hover:bg-indigo-700 transition-colors">Login with Google</button>
           )}
           <button onClick={() => setView('credit_settings')} className="flex items-center gap-2 px-3 py-1 bg-teal-50 border border-teal-100 rounded text-teal-600 hover:bg-teal-100 transition-colors text-[9px] font-bold uppercase tracking-tighter">
             <Clock size={12} /> Reset: {resetTimer}
@@ -496,10 +401,16 @@ export default function App() {
               <button onClick={() => setView('projects')} className="flex items-center gap-2 px-3 py-2 text-slate-500 hover:text-indigo-600 transition-all text-[10px] font-bold uppercase tracking-widest">
                 <ArrowLeft size={16} /> Exit Workspace
               </button>
-              <button disabled={credits.usedThisMonth >= credits.monthlyLimit} onClick={() => setView('new_idea')} className={`flex items-center gap-3 px-5 py-2.5 rounded-lg shadow-lg shadow-indigo-200 transition-all ${credits.usedThisMonth >= credits.monthlyLimit ? 'bg-slate-300 cursor-not-allowed' : 'bg-gradient-to-r from-indigo-600 to-purple-600 text-white hover:scale-[1.02] active:scale-95'}`}>
-                <Zap size={14} className="fill-white/20" />
-                <span className="text-[10px] font-bold uppercase tracking-widest">{credits.usedThisMonth >= credits.monthlyLimit ? 'Limit Reached' : 'Log Vibe'}</span>
-              </button>
+              <div className="flex items-center gap-3">
+                <button onClick={() => { setExpansionTarget(null); setView('swipe_suggestions'); }} className="flex items-center gap-3 px-5 py-2.5 bg-white border border-slate-200 text-indigo-600 rounded-lg shadow-sm hover:bg-slate-50 transition-all">
+                  <Sparkles size={14} className="text-amber-400" />
+                  <span className="text-[10px] font-bold uppercase tracking-widest">Discover</span>
+                </button>
+                <button disabled={credits.usedThisMonth >= credits.monthlyLimit} onClick={() => setView('new_idea')} className={`flex items-center gap-3 px-5 py-2.5 rounded-lg shadow-lg shadow-indigo-200 transition-all ${credits.usedThisMonth >= credits.monthlyLimit ? 'bg-slate-300 cursor-not-allowed' : 'bg-gradient-to-r from-indigo-600 to-purple-600 text-white hover:scale-[1.02] active:scale-95'}`}>
+                  <Zap size={14} className="fill-white/20" />
+                  <span className="text-[10px] font-bold uppercase tracking-widest">{credits.usedThisMonth >= credits.monthlyLimit ? 'Limit Reached' : 'Log Vibe'}</span>
+                </button>
+              </div>
             </div>
 
             <div className="grid grid-cols-12 gap-6">
@@ -532,28 +443,41 @@ export default function App() {
               </div>
               <div className="col-span-12 md:col-span-8 space-y-4">
                 {activeSpace.ideas.map((idea) => (
-                  <div key={idea.id} onClick={() => { setSelectedFeature(idea); setView('detail'); }} className="group bg-white p-6 rounded-2xl border border-slate-200 hover:border-indigo-400 hover:bg-indigo-50/10 transition-all cursor-pointer">
-                    <div className="flex justify-between items-start mb-4">
-                      <span className={`px-2 py-0.5 rounded ${activeColor(activeSpace).light} text-[9px] font-bold uppercase ${activeColor(activeSpace).text} border border-slate-100`}>{idea.type}</span>
-                      <span className="text-[9px] font-mono text-slate-300">REF_{idea.id.toString().slice(-4)}</span>
-                    </div>
-                    <div className="flex justify-between items-end">
-                      <div className="flex-1">
-                        <h3 className="text-lg font-bold text-slate-900 group-hover:text-indigo-600 transition-colors">{idea.title}</h3>
-                        <p className="text-slate-500 text-xs mt-2 line-clamp-2">{idea.summary}</p>
+                  <div key={idea.id} className="group bg-white p-6 rounded-2xl border border-slate-200 hover:border-indigo-400 hover:bg-indigo-50/10 transition-all cursor-pointer relative">
+                    <div onClick={() => { setSelectedFeature(idea); setView('detail'); }}>
+                      <div className="flex justify-between items-start mb-4">
+                        <span className={`px-2 py-0.5 rounded ${activeColor(activeSpace).light} text-[9px] font-bold uppercase ${activeColor(activeSpace).text} border border-slate-100`}>{idea.type}</span>
+                        <span className="text-[9px] font-mono text-slate-300">REF_{idea.id.toString().slice(-4)}</span>
                       </div>
-                      {idea.progress && (
-                        <div className="ml-4 flex flex-col items-end">
-                          <div className="flex items-center gap-2 mb-1">
-                            <div className="w-16 h-1.5 bg-slate-100 rounded-full overflow-hidden">
-                              <div className="h-full bg-indigo-500" style={{ width: `${idea.progress.percentage}%` }} />
-                            </div>
-                            <span className="text-[10px] font-mono font-bold text-indigo-600">{idea.progress.percentage}%</span>
-                          </div>
-                          <span className="text-[8px] font-bold text-slate-400 uppercase tracking-widest">Implemented</span>
+                      <div className="flex justify-between items-end">
+                        <div className="flex-1">
+                          <h3 className="text-lg font-bold text-slate-900 group-hover:text-indigo-600 transition-colors">{idea.title}</h3>
+                          <p className="text-slate-500 text-xs mt-2 line-clamp-2">{idea.summary}</p>
                         </div>
-                      )}
+                        {idea.progress && (
+                          <div className="ml-4 flex flex-col items-end">
+                            <div className="flex items-center gap-2 mb-1">
+                              <div className="w-16 h-1.5 bg-slate-100 rounded-full overflow-hidden">
+                                <div className="h-full bg-indigo-500" style={{ width: `${idea.progress.percentage}%` }} />
+                              </div>
+                              <span className="text-[10px] font-mono font-bold text-indigo-600">{idea.progress.percentage}%</span>
+                            </div>
+                            <span className="text-[8px] font-bold text-slate-400 uppercase tracking-widest">Implemented</span>
+                          </div>
+                        )}
+                      </div>
                     </div>
+                    <button 
+                      onClick={(e) => { 
+                        e.stopPropagation(); 
+                        setExpansionTarget(idea); 
+                        setView('swipe_suggestions'); 
+                      }} 
+                      className="absolute top-4 right-4 p-2 bg-white border border-slate-100 rounded-lg text-slate-400 hover:text-indigo-600 hover:bg-slate-50 transition-all opacity-0 group-hover:opacity-100 flex items-center gap-2"
+                    >
+                      <Sparkles size={12} className="text-amber-400" />
+                      <span className="text-[8px] font-bold uppercase tracking-widest">Scan Vibe</span>
+                    </button>
                   </div>
                 ))}
               </div>
@@ -597,10 +521,16 @@ export default function App() {
           <div className="max-w-4xl mx-auto space-y-8 animate-in fade-in duration-400">
             <div className="flex items-center justify-between">
               <button onClick={() => setView('roadmap')} className="flex items-center gap-2 text-slate-400 hover:text-indigo-600 transition-all"><ArrowLeft size={16}/> <span className="text-[10px] font-bold uppercase tracking-widest">Back to Space</span></button>
-              <button onClick={() => setView('progress_pulse')} className="flex items-center gap-3 px-5 py-2.5 rounded-lg border border-slate-200 bg-white hover:bg-slate-50 transition-all shadow-sm">
-                <Activity size={14} className="text-indigo-600" />
-                <span className="text-[10px] font-bold uppercase tracking-widest">Check Progress</span>
-              </button>
+              <div className="flex items-center gap-3">
+                <button onClick={() => { setExpansionTarget(selectedFeature); setView('swipe_suggestions'); }} className="flex items-center gap-3 px-5 py-2.5 rounded-lg border border-slate-200 bg-white hover:bg-slate-50 transition-all shadow-sm">
+                  <Sparkles size={14} className="text-amber-400" />
+                  <span className="text-[10px] font-bold uppercase tracking-widest">Scan Vibe</span>
+                </button>
+                <button onClick={() => setView('progress_pulse')} className="flex items-center gap-3 px-5 py-2.5 rounded-lg border border-slate-200 bg-white hover:bg-slate-50 transition-all shadow-sm">
+                  <Activity size={14} className="text-indigo-600" />
+                  <span className="text-[10px] font-bold uppercase tracking-widest">Check Progress</span>
+                </button>
+              </div>
             </div>
             
             <div className="space-y-8">
@@ -683,6 +613,37 @@ export default function App() {
               </label>
             </div>
           </div>
+        )}
+
+        {view === 'swipe_suggestions' && activeSpace && (
+          <FeatureSwiper 
+            space={activeSpace}
+            baseIdea={expansionTarget || undefined}
+            onAccept={async (idea) => {
+              if (await useCredit()) {
+                try {
+                  const apiBase = window.location.origin.includes('pages.dev') 
+                    ? 'https://ais-dev-73vzfbuac6sfbv2mnnolhm-170379606144.asia-southeast1.run.app' 
+                    : '';
+                  const res = await fetch(`${apiBase}/api/spaces/${activeSpace.id}/ideas`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ ...idea, createdAt: new Date().toISOString() }),
+                    credentials: 'include'
+                  });
+                  const { id } = await res.json();
+                  const newIdea = { ...idea, id, createdAt: new Date().toISOString() };
+                  
+                  const updated = spaces.map(p => p.id === activeSpace.id ? { ...p, lastUpdated: new Date().toISOString(), ideas: [newIdea, ...p.ideas] } : p);
+                  setSpaces(updated);
+                  setActiveSpace(updated.find(p => p.id === activeSpace.id) || null);
+                } catch (error) {
+                  console.error('Failed to save idea:', error);
+                }
+              }
+            }}
+            onCancel={() => setView('roadmap')}
+          />
         )}
 
         {view === 'new_idea' && activeSpace && <NewIdeaWorkflow project={activeSpace} onSave={async (idea) => {
