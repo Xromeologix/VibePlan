@@ -18,14 +18,20 @@ import {
   Rocket,
   ShieldAlert,
   X,
-  Globe
+  Globe,
+  Trash2,
+  Archive,
+  ChevronRight,
+  Mic
 } from 'lucide-react';
+import { motion, AnimatePresence } from 'motion/react';
 import { Space, Idea, Credits, ACCENT_COLORS } from './types';
 import Mermaid from './components/Mermaid';
 import ProgressPulse from './components/ProgressPulse';
 import NewIdeaWorkflow from './components/NewIdeaWorkflow';
 import FeatureSwiper from './components/FeatureSwiper';
-import { generateIcon } from './services/gemini';
+import BlurtMode from './components/BlurtMode';
+import { generateIcon, callGemini } from './services/gemini';
 
 interface User {
   id: number;
@@ -36,6 +42,10 @@ interface User {
   credits_used: number;
   monthly_limit: number;
 }
+
+const API_BASE = window.location.origin.includes('pages.dev') 
+  ? 'https://ais-dev-73vzfbuac6sfbv2mnnolhm-170379606144.asia-southeast1.run.app' 
+  : '';
 
 export default function App() {
   const [view, setView] = useState('projects'); 
@@ -55,7 +65,11 @@ export default function App() {
   const [importStatus, setImportStatus] = useState<string | null>(null);
   const [isGeneratingIcon, setIsGeneratingIcon] = useState(false);
   const [generatedIcon, setGeneratedIcon] = useState<string | null>(null);
+  const [iconStyle, setIconStyle] = useState('');
   const [expansionTarget, setExpansionTarget] = useState<Idea | null>(null);
+  const [pulseInput, setPulseInput] = useState('');
+  const [isAnalyzingPulse, setIsAnalyzingPulse] = useState(false);
+  const [isBlurtModeOpen, setIsBlurtModeOpen] = useState(false);
   
   const [credits, setCredits] = useState<Credits>({
     monthlyLimit: 100,
@@ -77,12 +91,74 @@ export default function App() {
     }
   }, [user]);
 
+  const handleBlurtComplete = async (result: any) => {
+    if (!result || !result.type || !result.data) return;
+    
+    if (result.type === 'space') {
+      const newSpace = {
+        name: result.data.name || 'New Blurted Space',
+        platform: result.data.platform || 'Custom',
+        color: result.data.color || 'Indigo',
+        icon: '🚀',
+        archived: false,
+        lastUpdated: new Date().toISOString()
+      };
+      
+      try {
+        const res = await fetch(`${API_BASE}/api/spaces`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(newSpace),
+          credentials: 'include'
+        });
+        if (res.ok) {
+          await fetchSpaces();
+          // Optionally, find the new space and set it as active
+          // For now, just go to projects view
+          setView('projects');
+        }
+      } catch (error) {
+        console.error('Failed to create blurted space:', error);
+      }
+    } else if (result.type === 'idea') {
+      // If we are in a space, add it to the active space
+      if (activeSpace) {
+        const newIdea = {
+          title: result.data.title || 'New Blurted Vibe',
+          summary: result.data.summary || '',
+          mermaid: result.data.mermaid || 'graph TD\nA-->B',
+          type: result.data.type || 'Module',
+          createdAt: new Date().toISOString(),
+          progress: undefined,
+          personas: result.data.personas
+        };
+        
+        try {
+          const res = await fetch(`${API_BASE}/api/spaces/${activeSpace.id}/ideas`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(newIdea),
+            credentials: 'include'
+          });
+          if (res.ok) {
+            await fetchSpaces();
+            // Update active space to reflect new idea
+            const updatedSpaces = await (await fetch(`${API_BASE}/api/spaces`, { credentials: 'include' })).json();
+            const updatedActive = updatedSpaces.find((s: Space) => s.id === activeSpace.id);
+            if (updatedActive) setActiveSpace(updatedActive);
+          }
+        } catch (error) {
+          console.error('Failed to create blurted idea:', error);
+        }
+      } else {
+        alert("You blurted a feature, but you aren't in a workspace! Open a workspace first to add features to it.");
+      }
+    }
+  };
+
   const fetchUser = async () => {
     try {
-      const apiBase = window.location.origin.includes('pages.dev') 
-        ? 'https://ais-dev-73vzfbuac6sfbv2mnnolhm-170379606144.asia-southeast1.run.app' 
-        : '';
-      const res = await fetch(`${apiBase}/api/auth/me`, { credentials: 'include' });
+      const res = await fetch(`${API_BASE}/api/auth/me`, { credentials: 'include' });
       if (res.ok) {
         const userData = await res.json();
         setUser(userData);
@@ -101,10 +177,7 @@ export default function App() {
 
   const fetchSpaces = async () => {
     try {
-      const apiBase = window.location.origin.includes('pages.dev') 
-        ? 'https://ais-dev-73vzfbuac6sfbv2mnnolhm-170379606144.asia-southeast1.run.app' 
-        : '';
-      const res = await fetch(`${apiBase}/api/spaces`, { credentials: 'include' });
+      const res = await fetch(`${API_BASE}/api/spaces`, { credentials: 'include' });
       if (res.ok) {
         const spacesData = await res.json();
         setSpaces(spacesData);
@@ -123,12 +196,7 @@ export default function App() {
     }
 
     try {
-      // If we are on Cloudflare Pages, we need to point to the AI Studio backend
-      const apiBase = window.location.origin.includes('pages.dev') 
-        ? 'https://ais-dev-73vzfbuac6sfbv2mnnolhm-170379606144.asia-southeast1.run.app' 
-        : '';
-
-      const res = await fetch(`${apiBase}/api/auth/url`, { credentials: 'include' });
+      const res = await fetch(`${API_BASE}/api/auth/url`, { credentials: 'include' });
       const data = await res.json();
       
       if (!res.ok) {
@@ -151,14 +219,10 @@ export default function App() {
     setIsAuthLoading(true);
 
     try {
-      const apiBase = window.location.origin.includes('pages.dev') 
-        ? 'https://ais-dev-73vzfbuac6sfbv2mnnolhm-170379606144.asia-southeast1.run.app' 
-        : '';
-      
       const endpoint = authMode === 'signup' ? '/api/auth/signup' : '/api/auth/login';
       const body = authMode === 'signup' ? { email, password, name } : { email, password };
 
-      const res = await fetch(`${apiBase}${endpoint}`, {
+      const res = await fetch(`${API_BASE}${endpoint}`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(body),
@@ -187,10 +251,7 @@ export default function App() {
 
   const handleLogout = async () => {
     try {
-      const apiBase = window.location.origin.includes('pages.dev') 
-        ? 'https://ais-dev-73vzfbuac6sfbv2mnnolhm-170379606144.asia-southeast1.run.app' 
-        : '';
-      await fetch(`${apiBase}/api/auth/logout`, { 
+      await fetch(`${API_BASE}/api/auth/logout`, { 
         method: 'POST',
         credentials: 'include'
       });
@@ -199,6 +260,46 @@ export default function App() {
       setView('projects');
     } catch (error) {
       console.error('Logout error:', error);
+    }
+  };
+
+  const handleArchiveSpace = async (space: Space) => {
+    try {
+      const updatedArchived = !space.archived;
+      const res = await fetch(`${API_BASE}/api/spaces/${space.id}`, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ 
+          name: space.name, 
+          icon: space.icon, 
+          archived: updatedArchived, 
+          lastUpdated: new Date().toISOString() 
+        }),
+        credentials: 'include'
+      });
+
+      if (res.ok) {
+        setSpaces(spaces.map(s => s.id === space.id ? { ...s, archived: updatedArchived } : s));
+      }
+    } catch (error) {
+      console.error('Archive error:', error);
+    }
+  };
+
+  const handleDeleteSpace = async (spaceId: number) => {
+    if (!confirm('Are you sure you want to permanently delete this workspace and all its vibes?')) return;
+    
+    try {
+      const res = await fetch(`${API_BASE}/api/spaces/${spaceId}`, {
+        method: 'DELETE',
+        credentials: 'include'
+      });
+
+      if (res.ok) {
+        setSpaces(spaces.filter(s => s.id !== spaceId));
+      }
+    } catch (error) {
+      console.error('Delete error:', error);
     }
   };
 
@@ -240,10 +341,7 @@ export default function App() {
     setCredits(prev => ({ ...prev, usedThisMonth: newUsed }));
     
     try {
-      const apiBase = window.location.origin.includes('pages.dev') 
-        ? 'https://ais-dev-73vzfbuac6sfbv2mnnolhm-170379606144.asia-southeast1.run.app' 
-        : '';
-      await fetch(`${apiBase}/api/user/credits`, {
+      await fetch(`${API_BASE}/api/user/credits`, {
         method: 'PUT',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ credits_used: newUsed }),
@@ -253,6 +351,31 @@ export default function App() {
       console.error('Failed to update credits:', error);
     }
     return true;
+  };
+
+  const handleAnalyzePulse = async () => {
+    if (!pulseInput.trim() || !activeSpace) return;
+    setIsAnalyzingPulse(true);
+    
+    try {
+      const prompt = `The user is building a project called "${activeSpace.name}" (${activeSpace.platform}). 
+      They just reported this progress: "${pulseInput}".
+      Based on their existing features: ${activeSpace.ideas.map(i => i.title).join(', ')}.
+      Analyze their progress and return a JSON object with a brief encouraging summary and an estimated overall completion percentage.
+      Return ONLY valid JSON: { "summary": "...", "percentage": 45 }`;
+      
+      const data = await callGemini(prompt, "You are an expert technical project manager and agile coach.");
+      
+      // We could save this to the space, but for now let's just show an alert or update a local state.
+      // To make it simple, we'll just alert the user with the AI's response.
+      alert(`Project Pulse Analysis:\n\n${data.summary}\n\nEstimated Completion: ${data.percentage}%`);
+      setPulseInput('');
+    } catch (error) {
+      console.error("Failed to analyze pulse:", error);
+      alert("Failed to analyze progress. Please try again.");
+    } finally {
+      setIsAnalyzingPulse(false);
+    }
   };
 
   const handleExport = () => {
@@ -293,6 +416,18 @@ export default function App() {
     reader.readAsText(file);
     e.target.value = "";
   };
+  
+  const handleIconUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    
+    const reader = new FileReader();
+    reader.onload = (event) => {
+      const base64 = event.target?.result as string;
+      setGeneratedIcon(base64);
+    };
+    reader.readAsDataURL(file);
+  };
 
   const activeColor = (space: Space | null) => ACCENT_COLORS.find(c => c.name === space?.color) || ACCENT_COLORS[0];
 
@@ -306,42 +441,37 @@ export default function App() {
 
   return (
     <div className="min-h-screen">
-      <nav className="sticky top-0 z-50 bg-white/80 backdrop-blur-md border-b border-slate-200 px-6 py-3 flex justify-between items-center">
+      <nav className="sticky top-0 z-50 bg-white/80 backdrop-blur-xl border-b border-slate-200/80 px-8 py-4 flex justify-between items-center shadow-sm shadow-slate-100/50 transition-all">
         <div className="flex items-center gap-6">
-          <div onClick={() => setView('projects')} className="flex items-center gap-2 cursor-pointer group">
-            <div className="w-8 h-8 bg-gradient-to-br from-indigo-600 via-purple-600 to-fuchsia-500 rounded flex items-center justify-center shadow-lg shadow-indigo-200 group-hover:scale-105 transition-transform">
-              <Terminal className="text-white w-4 h-4" />
+          <div onClick={() => setView('projects')} className="flex items-center gap-3 cursor-pointer group">
+            <div className="w-10 h-10 bg-gradient-to-br from-indigo-600 via-purple-600 to-fuchsia-500 rounded-xl flex items-center justify-center shadow-lg shadow-indigo-500/20 group-hover:scale-105 group-hover:shadow-indigo-500/40 transition-all duration-300">
+              <Terminal className="text-white w-5 h-5" />
             </div>
-            <span className="font-bold text-sm tracking-tighter uppercase text-slate-800">VibePlan <span className="text-indigo-400 font-medium">v1.4</span></span>
-          </div>
-          <div className="h-4 w-[1px] bg-slate-200" />
-          <div className="flex items-center gap-4 px-3 py-1.5 bg-slate-50 border border-slate-200 rounded-lg">
-             <div className="flex items-center gap-2">
-                <div className="w-2 h-2 rounded-full bg-indigo-500 animate-pulse"></div>
-                <span className="text-[9px] font-bold text-slate-500 uppercase tracking-widest">Credits: {credits.monthlyLimit - credits.usedThisMonth}/{credits.monthlyLimit}</span>
-             </div>
-             <div className="w-20 h-1 bg-slate-200 rounded-full overflow-hidden">
-                <div className="h-full bg-indigo-500 transition-all duration-1000" style={{ width: `${((credits.monthlyLimit - credits.usedThisMonth) / credits.monthlyLimit) * 100}%` }}></div>
-             </div>
+            <div className="flex flex-col">
+              <span className="font-extrabold text-base tracking-tight text-slate-900 leading-none group-hover:text-indigo-600 transition-colors">VibePlan</span>
+              <span className="text-[10px] font-bold text-indigo-500 uppercase tracking-widest mt-1">Version 1.4</span>
+            </div>
           </div>
         </div>
         <div className="flex items-center gap-4">
-          {user && (
-            <div className="flex items-center gap-3">
-              {user.picture ? (
-                <img src={user.picture} alt={user.name} className="w-8 h-8 rounded-full border border-slate-200" />
-              ) : (
-                <div className="w-8 h-8 rounded-full bg-indigo-100 flex items-center justify-center text-indigo-600 font-bold text-xs border border-indigo-200">
-                  {user.name.charAt(0)}
-                </div>
-              )}
-              <button onClick={handleLogout} className="text-[9px] font-bold text-slate-400 uppercase tracking-widest hover:text-rose-500 transition-colors">Logout</button>
-            </div>
-          )}
-          <button onClick={() => setView('credit_settings')} className="flex items-center gap-2 px-3 py-1 bg-teal-50 border border-teal-100 rounded text-teal-600 hover:bg-teal-100 transition-colors text-[9px] font-bold uppercase tracking-tighter">
-            <Clock size={12} /> Reset: {resetTimer}
+          <button 
+            onClick={() => setIsBlurtModeOpen(true)} 
+            className="flex items-center gap-2 px-4 py-2 rounded-xl font-bold text-[10px] uppercase tracking-widest transition-all duration-300 bg-gradient-to-r from-indigo-500 to-purple-500 text-white shadow-md shadow-indigo-500/20 hover:shadow-indigo-500/40 hover:scale-105"
+          >
+            <Mic size={14} />
+            <span>Blurt</span>
           </button>
-          <button onClick={() => setView('vault')} className={`p-2 rounded-lg transition-all ${view === 'vault' ? 'bg-indigo-600 text-white shadow-md' : 'text-slate-400 hover:bg-slate-100'}`}><Database size={18} /></button>
+          <button 
+            onClick={() => setView('vault')} 
+            className={`flex items-center gap-2 px-4 py-2 rounded-xl font-bold text-[10px] uppercase tracking-widest transition-all duration-300 ${
+              view === 'vault' 
+                ? 'bg-indigo-600 text-white shadow-md shadow-indigo-500/20' 
+                : 'bg-slate-50 text-slate-500 border border-slate-200 hover:bg-slate-100 hover:text-slate-700'
+            }`}
+          >
+            <Database size={14} />
+            <span>Data Vault</span>
+          </button>
         </div>
       </nav>
 
@@ -359,38 +489,85 @@ export default function App() {
             </div>
 
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-5">
-              <button onClick={() => setView('new_project')} className="flex flex-col items-center justify-center gap-3 p-8 rounded-2xl border border-dashed border-slate-300 bg-white/50 text-slate-400 hover:border-indigo-400 hover:text-indigo-600 hover:bg-indigo-50/30 transition-all group">
+              <button onClick={() => setView('new_project')} className="flex flex-col items-center justify-center gap-3 p-8 rounded-2xl border border-dashed border-slate-300 bg-white/50 text-slate-400 hover:border-indigo-400 hover:text-indigo-600 hover:bg-indigo-50/30 transition-all group h-[120px]">
                 <div className="w-10 h-10 rounded-full bg-slate-50 flex items-center justify-center border border-slate-100 group-hover:bg-white group-hover:border-indigo-100"><Plus size={20} /></div>
                 <span className="font-bold text-[10px] uppercase tracking-[0.2em]">New Space</span>
               </button>
-              {spaces.filter(p => showArchived ? p.archived : !p.archived).map((p) => {
-                const colorSet = activeColor(p);
-                return (
-                  <div key={p.id} className="group relative bg-white rounded-2xl border border-slate-200 hover:border-indigo-500 hover:shadow-xl hover:shadow-indigo-500/5 transition-all">
-                    <div onClick={() => { setActiveSpace(p); setView('roadmap'); }} className="p-6 cursor-pointer">
-                      <div className="flex items-start gap-4">
-                      <div className={`w-12 h-12 rounded-xl ${colorSet.light} flex items-center justify-center border border-slate-100 text-2xl group-hover:scale-110 transition-transform overflow-hidden`}>
-                        {p.icon.startsWith('data:') ? (
-                          <img src={p.icon} alt={p.name} className="w-full h-full object-cover" referrerPolicy="no-referrer" />
-                        ) : (
-                          p.icon
-                        )}
-                      </div>
-                        <div className="flex-1 min-w-0">
-                          <h3 className={`text-base font-bold text-slate-900 truncate group-hover:${colorSet.text} transition-colors`}>{p.name}</h3>
-                          <div className="flex items-center gap-2 mt-1">
-                            <span className={`text-[9px] font-bold ${colorSet.text} uppercase tracking-tighter ${colorSet.light} px-1.5 py-0.5 rounded`}>{p.platform}</span>
-                            <span className="text-[9px] font-bold text-slate-300 uppercase">{p.ideas.length} Vibes</span>
-                          </div>
+              
+              <AnimatePresence mode="popLayout">
+                {spaces.filter(p => showArchived ? p.archived : !p.archived).map((p) => {
+                  const colorSet = activeColor(p);
+                  return (
+                    <motion.div 
+                      key={p.id}
+                      layout
+                      initial={{ opacity: 0, scale: 0.9 }}
+                      animate={{ opacity: 1, scale: 1 }}
+                      exit={{ opacity: 0, scale: 0.9 }}
+                      className="relative h-[120px] group"
+                    >
+                      {/* Action Layer (Behind) */}
+                      <div className="absolute inset-0 flex justify-end overflow-hidden rounded-2xl">
+                        <div className="flex h-full">
+                          <button 
+                            onClick={() => { setEditingSpace(p); setView('edit_space'); }}
+                            className="w-16 h-full bg-indigo-500 text-white flex flex-col items-center justify-center gap-1 hover:bg-indigo-600 transition-colors"
+                          >
+                            <Edit2 size={18} />
+                            <span className="text-[8px] font-bold uppercase">Edit</span>
+                          </button>
+                          <button 
+                            onClick={() => handleArchiveSpace(p)}
+                            className="w-16 h-full bg-amber-500 text-white flex flex-col items-center justify-center gap-1 hover:bg-amber-600 transition-colors"
+                          >
+                            <Archive size={18} />
+                            <span className="text-[8px] font-bold uppercase">{p.archived ? 'Unarchive' : 'Archive'}</span>
+                          </button>
+                          <button 
+                            onClick={() => handleDeleteSpace(p.id)}
+                            className="w-16 h-full bg-rose-500 text-white flex flex-col items-center justify-center gap-1 hover:bg-rose-600 transition-colors"
+                          >
+                            <Trash2 size={18} />
+                            <span className="text-[8px] font-bold uppercase">Delete</span>
+                          </button>
                         </div>
                       </div>
-                    </div>
-                    <button onClick={(e) => { e.stopPropagation(); setEditingSpace(p); setView('edit_space'); }} className="absolute bottom-4 right-4 p-2 bg-slate-50 border border-slate-100 rounded-lg text-slate-400 hover:text-indigo-600 hover:bg-white transition-all opacity-0 group-hover:opacity-100">
-                      <Edit2 size={14} />
-                    </button>
-                  </div>
-                );
-              })}
+
+                      {/* Foreground Card */}
+                      <motion.div
+                        drag="x"
+                        dragConstraints={{ left: -192, right: 0 }}
+                        dragElastic={0.1}
+                        whileTap={{ cursor: "grabbing" }}
+                        className="absolute inset-0 bg-white rounded-2xl border border-slate-200 hover:border-indigo-500 hover:shadow-xl hover:shadow-indigo-500/5 transition-colors z-10 cursor-grab flex"
+                      >
+                        <div className="flex-1 flex h-full">
+                          {/* Main Clickable Area: Roadmap */}
+                          <div 
+                            onClick={() => { setActiveSpace(p); setView('roadmap'); }} 
+                            className="flex-1 p-5 flex items-center gap-4"
+                          >
+                            <div className={`w-12 h-12 rounded-xl ${colorSet.light} flex items-center justify-center border border-slate-100 text-2xl overflow-hidden shrink-0`}>
+                              {p.icon.startsWith('data:') ? (
+                                <img src={p.icon} alt={p.name} className="w-full h-full object-cover" referrerPolicy="no-referrer" />
+                              ) : (
+                                p.icon
+                              )}
+                            </div>
+                            <div className="min-w-0">
+                              <h3 className={`text-base font-bold text-slate-900 truncate group-hover:${colorSet.text} transition-colors`}>{p.name}</h3>
+                              <div className="flex items-center gap-2 mt-1">
+                                <span className={`text-[9px] font-bold ${colorSet.text} uppercase tracking-tighter ${colorSet.light} px-1.5 py-0.5 rounded`}>{p.platform}</span>
+                                <span className="text-[9px] font-bold text-slate-300 uppercase">{p.ideas.length} Vibes</span>
+                              </div>
+                            </div>
+                          </div>
+                        </div>
+                      </motion.div>
+                    </motion.div>
+                  );
+                })}
+              </AnimatePresence>
             </div>
           </div>
         )}
@@ -402,13 +579,17 @@ export default function App() {
                 <ArrowLeft size={16} /> Exit Workspace
               </button>
               <div className="flex items-center gap-3">
+                <button onClick={() => { setEditingSpace(activeSpace); setView('edit_space'); }} className="flex items-center gap-3 px-5 py-2.5 bg-white border border-slate-200 text-slate-600 rounded-lg shadow-sm hover:bg-slate-50 transition-all">
+                  <Edit2 size={14} />
+                  <span className="text-[10px] font-bold uppercase tracking-widest">Edit Space</span>
+                </button>
                 <button onClick={() => { setExpansionTarget(null); setView('swipe_suggestions'); }} className="flex items-center gap-3 px-5 py-2.5 bg-white border border-slate-200 text-indigo-600 rounded-lg shadow-sm hover:bg-slate-50 transition-all">
                   <Sparkles size={14} className="text-amber-400" />
                   <span className="text-[10px] font-bold uppercase tracking-widest">Discover</span>
                 </button>
-                <button disabled={credits.usedThisMonth >= credits.monthlyLimit} onClick={() => setView('new_idea')} className={`flex items-center gap-3 px-5 py-2.5 rounded-lg shadow-lg shadow-indigo-200 transition-all ${credits.usedThisMonth >= credits.monthlyLimit ? 'bg-slate-300 cursor-not-allowed' : 'bg-gradient-to-r from-indigo-600 to-purple-600 text-white hover:scale-[1.02] active:scale-95'}`}>
+                <button onClick={() => setView('new_idea')} className="flex items-center gap-3 px-5 py-2.5 rounded-lg shadow-lg shadow-indigo-200 transition-all bg-gradient-to-r from-indigo-600 to-purple-600 text-white hover:scale-[1.02] active:scale-95">
                   <Zap size={14} className="fill-white/20" />
-                  <span className="text-[10px] font-bold uppercase tracking-widest">{credits.usedThisMonth >= credits.monthlyLimit ? 'Limit Reached' : 'Log Vibe'}</span>
+                  <span className="text-[10px] font-bold uppercase tracking-widest">Log Vibe</span>
                 </button>
               </div>
             </div>
@@ -440,6 +621,29 @@ export default function App() {
                       </div>
                    </div>
                 </header>
+
+                <div className="p-6 rounded-2xl bg-white border border-slate-200 shadow-sm">
+                  <h3 className="text-xs font-bold text-slate-900 uppercase tracking-widest mb-4 flex items-center gap-2">
+                    <Activity size={14} className="text-indigo-500" />
+                    Project Pulse
+                  </h3>
+                  <div className="space-y-3">
+                    <textarea 
+                      value={pulseInput}
+                      onChange={(e) => setPulseInput(e.target.value)}
+                      placeholder="What did you build today? (e.g., 'I added the login screen and user profile')"
+                      className="w-full h-24 p-3 text-xs border border-slate-200 rounded-xl focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 resize-none bg-slate-50"
+                    />
+                    <button 
+                      onClick={handleAnalyzePulse}
+                      disabled={isAnalyzingPulse || !pulseInput.trim()}
+                      className="w-full py-2 bg-indigo-50 text-indigo-600 rounded-lg text-[10px] font-bold uppercase tracking-widest hover:bg-indigo-100 transition-colors flex items-center justify-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed"
+                    >
+                      {isAnalyzingPulse ? <Loader2 size={12} className="animate-spin" /> : <Sparkles size={12} />} 
+                      {isAnalyzingPulse ? 'Analyzing...' : 'Analyze Progress'}
+                    </button>
+                  </div>
+                </div>
               </div>
               <div className="col-span-12 md:col-span-8 space-y-4">
                 {activeSpace.ideas.map((idea) => (
@@ -492,10 +696,7 @@ export default function App() {
             onUpdate={async (progressData) => {
               if (await useCredit()) {
                 try {
-                  const apiBase = window.location.origin.includes('pages.dev') 
-                    ? 'https://ais-dev-73vzfbuac6sfbv2mnnolhm-170379606144.asia-southeast1.run.app' 
-                    : '';
-                  await fetch(`${apiBase}/api/ideas/${selectedFeature.id}`, {
+                  await fetch(`${API_BASE}/api/ideas/${selectedFeature.id}`, {
                     method: 'PUT',
                     headers: { 'Content-Type': 'application/json' },
                     body: JSON.stringify({ progress: progressData }),
@@ -622,10 +823,7 @@ export default function App() {
             onAccept={async (idea) => {
               if (await useCredit()) {
                 try {
-                  const apiBase = window.location.origin.includes('pages.dev') 
-                    ? 'https://ais-dev-73vzfbuac6sfbv2mnnolhm-170379606144.asia-southeast1.run.app' 
-                    : '';
-                  const res = await fetch(`${apiBase}/api/spaces/${activeSpace.id}/ideas`, {
+                  const res = await fetch(`${API_BASE}/api/spaces/${activeSpace.id}/ideas`, {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
                     body: JSON.stringify({ ...idea, createdAt: new Date().toISOString() }),
@@ -649,10 +847,7 @@ export default function App() {
         {view === 'new_idea' && activeSpace && <NewIdeaWorkflow project={activeSpace} onSave={async (idea) => {
           if (await useCredit()) {
             try {
-              const apiBase = window.location.origin.includes('pages.dev') 
-                ? 'https://ais-dev-73vzfbuac6sfbv2mnnolhm-170379606144.asia-southeast1.run.app' 
-                : '';
-              const res = await fetch(`${apiBase}/api/spaces/${activeSpace.id}/ideas`, {
+              const res = await fetch(`${API_BASE}/api/spaces/${activeSpace.id}/ideas`, {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify(idea),
@@ -679,40 +874,124 @@ export default function App() {
               </header>
               <div className="bg-white border border-slate-200 rounded-2xl p-8 space-y-8">
                  <div className="flex gap-6">
-                    <div className="w-20 space-y-2">
-                      <label className="text-[9px] font-bold uppercase tracking-widest text-slate-400 px-1">ID</label>
-                      <input id="edit-icon" maxLength={2} className="w-full p-3 bg-slate-50 border border-slate-200 rounded-xl text-center text-xl focus:bg-white outline-none" defaultValue={editingSpace.icon} />
+                    <div className="w-24 space-y-2">
+                      <label className="text-[9px] font-bold uppercase tracking-widest text-slate-400 px-1">Icon</label>
+                      <div className="relative group/icon">
+                        <div className="w-full h-20 bg-slate-50 border border-slate-200 rounded-xl flex items-center justify-center text-3xl overflow-hidden">
+                          {generatedIcon || (editingSpace.icon.startsWith('data:') ? editingSpace.icon : null) ? (
+                            <img src={generatedIcon || editingSpace.icon} alt="Space Icon" className="w-full h-full object-cover" referrerPolicy="no-referrer" />
+                          ) : (
+                            <input id="edit-icon" maxLength={2} className="w-full h-full bg-transparent text-center focus:outline-none" defaultValue={editingSpace.icon} />
+                          )}
+                        </div>
+                        <div className="absolute -bottom-2 -right-2 flex gap-1">
+                          <label className="p-1.5 bg-teal-600 text-white rounded-lg shadow-lg hover:scale-110 transition-all cursor-pointer">
+                            <Upload size={12} />
+                            <input type="file" className="hidden" accept="image/*" onChange={handleIconUpload} />
+                          </label>
+                          <button 
+                            onClick={async () => {
+                              const nameInput = document.getElementById('edit-name') as HTMLInputElement;
+                              setIsGeneratingIcon(true);
+                              try {
+                                const icon = await generateIcon(nameInput.value, iconStyle);
+                                setGeneratedIcon(icon);
+                              } catch (e) {
+                                alert("Failed to generate icon");
+                              } finally {
+                                setIsGeneratingIcon(false);
+                              }
+                            }}
+                            disabled={isGeneratingIcon}
+                            className="p-1.5 bg-indigo-600 text-white rounded-lg shadow-lg hover:scale-110 transition-all disabled:opacity-50 disabled:scale-100"
+                          >
+                            {isGeneratingIcon ? <Loader2 size={12} className="animate-spin" /> : <Sparkles size={12} />}
+                          </button>
+                        </div>
+                        {(generatedIcon || editingSpace.icon.startsWith('data:')) && (
+                          <button 
+                            onClick={() => {
+                              setGeneratedIcon(null);
+                              if (editingSpace.icon.startsWith('data:')) {
+                                setEditingSpace({...editingSpace, icon: '🛠️'});
+                              }
+                            }}
+                            className="absolute -top-2 -right-2 p-1 bg-rose-500 text-white rounded-full shadow-md hover:scale-110 transition-all"
+                          >
+                            <X size={10} />
+                          </button>
+                        )}
+                      </div>
                     </div>
                     <div className="flex-1 space-y-2">
                       <label className="text-[9px] font-bold uppercase tracking-widest text-slate-400 px-1">Namespace</label>
                       <input id="edit-name" className="w-full p-3 bg-slate-50 border border-slate-200 rounded-xl text-sm font-bold focus:bg-white outline-none" defaultValue={editingSpace.name} />
                     </div>
                  </div>
+                 <div className="flex gap-6 mt-6">
+                    <div className="flex-1 space-y-2">
+                      <label className="text-[9px] font-bold uppercase tracking-widest text-slate-400 px-1">Platform</label>
+                      <input id="edit-platform" className="w-full p-3 bg-slate-50 border border-slate-200 rounded-xl text-sm font-bold focus:bg-white outline-none" defaultValue={editingSpace.platform} />
+                    </div>
+                    <div className="flex-1 space-y-2">
+                      <label className="text-[9px] font-bold uppercase tracking-widest text-slate-400 px-1">Accent Color</label>
+                      <select id="edit-color" className="w-full p-3 bg-slate-50 border border-slate-200 rounded-xl text-sm font-bold focus:bg-white outline-none" defaultValue={editingSpace.color}>
+                        {ACCENT_COLORS.map(c => <option key={c.name} value={c.name}>{c.name}</option>)}
+                      </select>
+                    </div>
+                 </div>
+                 
+                 <div className="space-y-2">
+                    <label className="text-[9px] font-bold uppercase tracking-widest text-slate-400 px-1">Icon Style / Specification (Optional)</label>
+                    <textarea 
+                      value={iconStyle}
+                      onChange={(e) => setIconStyle(e.target.value)}
+                      placeholder="e.g. Cyberpunk style, neon colors, minimalist line art..."
+                      className="w-full p-3 bg-slate-50 border border-slate-200 rounded-xl text-xs focus:bg-white outline-none min-h-[60px]"
+                    />
+                 </div>
+
                  <div className="pt-4 flex gap-3">
                     <button onClick={async () => {
                        const nameInput = document.getElementById('edit-name') as HTMLInputElement;
                        const iconInput = document.getElementById('edit-icon') as HTMLInputElement;
+                       const platformInput = document.getElementById('edit-platform') as HTMLInputElement;
+                       const colorInput = document.getElementById('edit-color') as HTMLSelectElement;
+                       
                        const name = nameInput.value;
-                       const icon = iconInput.value;
+                       const platform = platformInput.value;
+                       const color = colorInput.value;
+                       const icon = generatedIcon || (editingSpace.icon.startsWith('data:') ? editingSpace.icon : (iconInput?.value || '🛠️'));
                        
                        try {
-                         const apiBase = window.location.origin.includes('pages.dev') 
-                           ? 'https://ais-dev-73vzfbuac6sfbv2mnnolhm-170379606144.asia-southeast1.run.app' 
-                           : '';
-                         await fetch(`${apiBase}/api/spaces/${editingSpace.id}`, {
+                         const res = await fetch(`${API_BASE}/api/spaces/${editingSpace.id}`, {
                            method: 'PUT',
                            headers: { 'Content-Type': 'application/json' },
-                           body: JSON.stringify({ name, icon, archived: editingSpace.archived, lastUpdated: new Date().toISOString() }),
+                           body: JSON.stringify({ name, icon, platform, color, archived: editingSpace.archived, lastUpdated: new Date().toISOString() }),
                            credentials: 'include'
                          });
                          
-                         setSpaces(spaces.map(s => s.id === editingSpace.id ? { ...s, name, icon } : s));
+                         if (!res.ok) {
+                           let errorMessage = 'Failed to update space';
+                           try {
+                             const errorData = await res.json();
+                             errorMessage = errorData.error || errorMessage;
+                           } catch (e) {
+                             errorMessage = await res.text() || res.statusText || errorMessage;
+                           }
+                           throw new Error(errorMessage);
+                         }
+                         
+                         setSpaces(spaces.map(s => s.id === editingSpace.id ? { ...s, name, icon, platform, color } : s));
+                         setGeneratedIcon(null);
+                         setIconStyle('');
                          setView('projects');
                        } catch (error) {
                          console.error('Failed to update space:', error);
+                         alert(`Failed to update space: ${error instanceof Error ? error.message : 'Unknown error'}`);
                        }
                     }} className="flex-1 py-4 bg-indigo-600 text-white font-bold text-[10px] uppercase tracking-[0.2em] rounded-xl shadow-lg">Commit Changes</button>
-                    <button onClick={() => setView('projects')} className="px-6 py-4 bg-white text-slate-400 font-bold text-[10px] uppercase tracking-widest rounded-xl border border-slate-200">Cancel</button>
+                    <button onClick={() => { setGeneratedIcon(null); setIconStyle(''); setView('projects'); }} className="px-6 py-4 bg-white text-slate-400 font-bold text-[10px] uppercase tracking-widest rounded-xl border border-slate-200">Cancel</button>
                  </div>
               </div>
            </div>
@@ -739,28 +1018,34 @@ export default function App() {
                         <input id="icon-input" maxLength={2} className="w-full h-full bg-transparent text-center focus:outline-none" defaultValue="⚡" />
                       )}
                     </div>
-                    <button 
-                      onClick={async () => {
-                        const nameInput = document.getElementById('proj-name-input') as HTMLInputElement;
-                        if (!nameInput.value) {
-                          alert("Enter a space name first to guide the AI");
-                          return;
-                        }
-                        setIsGeneratingIcon(true);
-                        try {
-                          const icon = await generateIcon(nameInput.value);
-                          setGeneratedIcon(icon);
-                        } catch (e) {
-                          alert("Failed to generate icon");
-                        } finally {
-                          setIsGeneratingIcon(false);
-                        }
-                      }}
-                      disabled={isGeneratingIcon}
-                      className="absolute -bottom-2 -right-2 p-1.5 bg-indigo-600 text-white rounded-lg shadow-lg hover:scale-110 transition-all disabled:opacity-50 disabled:scale-100"
-                    >
-                      {isGeneratingIcon ? <Loader2 size={12} className="animate-spin" /> : <Sparkles size={12} />}
-                    </button>
+                    <div className="absolute -bottom-2 -right-2 flex gap-1">
+                      <label className="p-1.5 bg-teal-600 text-white rounded-lg shadow-lg hover:scale-110 transition-all cursor-pointer">
+                        <Upload size={12} />
+                        <input type="file" className="hidden" accept="image/*" onChange={handleIconUpload} />
+                      </label>
+                      <button 
+                        onClick={async () => {
+                          const nameInput = document.getElementById('proj-name-input') as HTMLInputElement;
+                          if (!nameInput.value) {
+                            alert("Enter a space name first to guide the AI");
+                            return;
+                          }
+                          setIsGeneratingIcon(true);
+                          try {
+                            const icon = await generateIcon(nameInput.value, iconStyle);
+                            setGeneratedIcon(icon);
+                          } catch (e) {
+                            alert("Failed to generate icon");
+                          } finally {
+                            setIsGeneratingIcon(false);
+                          }
+                        }}
+                        disabled={isGeneratingIcon}
+                        className="p-1.5 bg-indigo-600 text-white rounded-lg shadow-lg hover:scale-110 transition-all disabled:opacity-50 disabled:scale-100"
+                      >
+                        {isGeneratingIcon ? <Loader2 size={12} className="animate-spin" /> : <Sparkles size={12} />}
+                      </button>
+                    </div>
                     {generatedIcon && (
                       <button 
                         onClick={() => setGeneratedIcon(null)}
@@ -776,63 +1061,71 @@ export default function App() {
                   <input id="proj-name-input" autoFocus className="w-full p-3 bg-slate-50 border border-slate-200 rounded-xl text-sm font-bold focus:bg-white focus:outline-none transition-all" placeholder="Enter Space Name..." />
                 </div>
               </div>
+
+              <div className="space-y-2">
+                <label className="text-[9px] font-bold uppercase tracking-widest text-slate-400 px-1">Icon Style / Specification (Optional)</label>
+                <textarea 
+                  value={iconStyle}
+                  onChange={(e) => setIconStyle(e.target.value)}
+                  placeholder="e.g. Cyberpunk style, neon colors, minimalist line art..."
+                  className="w-full p-3 bg-slate-50 border border-slate-200 rounded-xl text-xs focus:bg-white outline-none min-h-[60px]"
+                />
+              </div>
+
               <div className="pt-4 flex gap-3">
                 <button onClick={async () => {
                   const nameInput = document.getElementById('proj-name-input') as HTMLInputElement;
                   const iconInput = document.getElementById('icon-input') as HTMLInputElement;
-                  const val = nameInput.value;
+                  const val = nameInput?.value;
                   const icon = generatedIcon || iconInput?.value || '🛠️';
                   
                   if (val) {
                     try {
-                      const apiBase = window.location.origin.includes('pages.dev') 
-                        ? 'https://ais-dev-73vzfbuac6sfbv2mnnolhm-170379606144.asia-southeast1.run.app' 
-                        : '';
                       const spaceData = { name: val, platform: 'Lovable', icon: icon, color: 'Indigo', archived: false, lastUpdated: new Date().toISOString() };
-                      const res = await fetch(`${apiBase}/api/spaces`, {
+                      const res = await fetch(`${API_BASE}/api/spaces`, {
                         method: 'POST',
                         headers: { 'Content-Type': 'application/json' },
                         body: JSON.stringify(spaceData),
                         credentials: 'include'
                       });
+                      
+                      if (!res.ok) {
+                        let errorMessage = 'Failed to create space';
+                        try {
+                          const errorData = await res.json();
+                          errorMessage = errorData.error || errorMessage;
+                        } catch (e) {
+                          errorMessage = await res.text() || res.statusText || errorMessage;
+                        }
+                        throw new Error(errorMessage);
+                      }
+                      
                       const { id } = await res.json();
                       
                       setSpaces([{ ...spaceData, id, ideas: [] }, ...spaces]);
                       setGeneratedIcon(null);
+                      setIconStyle('');
                       setView('projects');
                     } catch (error) {
                       console.error('Failed to create space:', error);
+                      alert(`Failed to create space: ${error instanceof Error ? error.message : 'Unknown error'}`);
                     }
                   }
                 }} className="flex-1 py-4 bg-indigo-600 text-white font-bold text-[10px] uppercase tracking-[0.2em] rounded-xl hover:bg-indigo-700 shadow-lg shadow-indigo-100 transition-all">Deploy Workspace</button>
-                <button onClick={() => { setGeneratedIcon(null); setView('projects'); }} className="px-6 py-4 bg-white text-slate-400 font-bold text-[10px] uppercase tracking-widest rounded-xl border border-slate-200">Abort</button>
+                <button onClick={() => { setGeneratedIcon(null); setIconStyle(''); setView('projects'); }} className="px-6 py-4 bg-white text-slate-400 font-bold text-[10px] uppercase tracking-widest rounded-xl border border-slate-200">Abort</button>
               </div>
             </div>
           </div>
         )}
 
-        {view === 'credit_settings' && (
-           <div className="max-w-xl mx-auto space-y-8 animate-in slide-in-from-top-4 duration-500">
-              <header className="text-center space-y-2">
-                 <div className="w-16 h-16 bg-indigo-50 text-indigo-500 rounded-full flex items-center justify-center mx-auto mb-4"><ShieldAlert size={32} /></div>
-                 <h2 className="text-2xl font-bold">Resource Governance</h2>
-                 <p className="text-slate-400 text-xs font-bold uppercase tracking-widest">Global Credit Allocation</p>
-              </header>
-              <div className="bg-white border border-slate-200 rounded-2xl p-10 shadow-xl shadow-indigo-500/5 space-y-10">
-                 <div className="grid grid-cols-2 gap-8">
-                    <div className="space-y-3">
-                       <label className="text-[9px] font-bold uppercase tracking-[0.2em] text-indigo-500">Monthly Limit</label>
-                       <input type="number" className="w-full p-4 bg-slate-50 border border-slate-100 rounded-xl text-lg font-mono font-bold focus:bg-white outline-none" value={credits.monthlyLimit} onChange={e => setCredits({...credits, monthlyLimit: parseInt(e.target.value)})} />
-                    </div>
-                    <div className="space-y-3">
-                       <label className="text-[9px] font-bold uppercase tracking-[0.2em] text-indigo-500">Reset Date</label>
-                       <input type="number" min="1" max="31" className="w-full p-4 bg-slate-50 border border-slate-100 rounded-xl text-lg font-mono font-bold focus:bg-white outline-none" value={credits.resetDay} onChange={e => setCredits({...credits, resetDay: parseInt(e.target.value)})} />
-                    </div>
-                 </div>
-                 <button onClick={() => setView('projects')} className="w-full py-4 bg-slate-900 text-white rounded-xl font-bold text-[10px] uppercase tracking-[0.3em] shadow-lg shadow-slate-200">Save Protocol</button>
-              </div>
-           </div>
+        {isBlurtModeOpen && (
+          <BlurtMode 
+            activeSpace={activeSpace} 
+            onClose={() => setIsBlurtModeOpen(false)} 
+            onComplete={handleBlurtComplete} 
+          />
         )}
+
       </main>
     </div>
   );

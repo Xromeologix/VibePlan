@@ -85,7 +85,8 @@ async function startServer() {
     next();
   });
 
-  app.use(express.json());
+  app.use(express.json({ limit: '10mb' }));
+  app.use(express.urlencoded({ limit: '10mb', extended: true }));
   
   app.use(
     session({
@@ -341,10 +342,20 @@ async function startServer() {
     const userId = (req.session as any).userId;
     if (!userId) return res.status(401).json({ error: "Not authenticated" });
 
-    const { name, icon, archived, lastUpdated } = req.body;
+    const { name, icon, platform, color, archived, lastUpdated } = req.body;
     db.prepare(
-      "UPDATE spaces SET name = ?, icon = ?, archived = ?, last_updated = ? WHERE id = ? AND user_id = ?"
-    ).run(name, icon, archived ? 1 : 0, lastUpdated, req.params.id, userId);
+      "UPDATE spaces SET name = ?, icon = ?, platform = ?, color = ?, archived = ?, last_updated = ? WHERE id = ? AND user_id = ?"
+    ).run(name, icon, platform, color, archived ? 1 : 0, lastUpdated, req.params.id, userId);
+
+    res.json({ success: true });
+  });
+
+  app.delete("/api/spaces/:id", (req, res) => {
+    const userId = (req.session as any).userId;
+    if (!userId) return res.status(401).json({ error: "Not authenticated" });
+
+    db.prepare("DELETE FROM ideas WHERE space_id = ?").run(req.params.id);
+    db.prepare("DELETE FROM spaces WHERE id = ? AND user_id = ?").run(req.params.id, userId);
 
     res.json({ success: true });
   });

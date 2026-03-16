@@ -28,10 +28,10 @@ export default function FeatureSwiper({ space, baseIdea, onAccept, onCancel }: F
     let prompt = "";
     if (baseIdea) {
       prompt = `Based on the workspace "${space.name}" and the specific feature "${baseIdea.title}" (${baseIdea.summary}), suggest 5 unique ways to EXPAND or SUB-DIVIDE this feature into more detailed modules or related capabilities. 
-      Return ONLY a JSON array of objects: [{ "title": "...", "summary": "...", "mermaid": "graph TD\\n...", "type": "Module|API|UI|Logic" }]`;
+      Return ONLY a JSON array of objects: [{ "title": "...", "summary": "...", "mermaid": "graph TD\\n...", "type": "Module|API|UI|Logic", "personas": { "ux": { "score": 85, "comment": "..." }, "pm": { "score": 90, "comment": "..." }, "tech": { "score": 70, "comment": "..." } } }]`;
     } else {
       prompt = `Based on the workspace "${space.name}" (${space.platform}) and existing features [${existingTitles}], suggest 5 unique, creative, and technical feature ideas. 
-      Return ONLY a JSON array of objects: [{ "title": "...", "summary": "...", "mermaid": "graph TD\\n...", "type": "Module|API|UI|Logic" }]`;
+      Return ONLY a JSON array of objects: [{ "title": "...", "summary": "...", "mermaid": "graph TD\\n...", "type": "Module|API|UI|Logic", "personas": { "ux": { "score": 85, "comment": "..." }, "pm": { "score": 90, "comment": "..." }, "tech": { "score": 70, "comment": "..." } } }]`;
     }
     
     try {
@@ -65,7 +65,7 @@ export default function FeatureSwiper({ space, baseIdea, onAccept, onCancel }: F
     setIsReimagining(true);
     const prompt = `Reimagine this feature idea for "${space.name}": "${feature.title} - ${feature.summary}". 
     Make it more innovative or take a different technical approach.
-    Return ONLY a JSON object: { "title": "...", "summary": "...", "mermaid": "graph TD\\n...", "type": "Module|API|UI|Logic" }`;
+    Return ONLY a JSON object: { "title": "...", "summary": "...", "mermaid": "graph TD\\n...", "type": "Module|API|UI|Logic", "personas": { "ux": { "score": 85, "comment": "..." }, "pm": { "score": 90, "comment": "..." }, "tech": { "score": 70, "comment": "..." } } }`;
     
     try {
       const data = await callGemini(prompt, "You are a creative product architect. Return valid JSON only.");
@@ -224,22 +224,44 @@ function SwipeCard({ feature, onSwipe, isReimagining }: { feature: any, onSwipe:
           </p>
         </div>
 
-        <div className="flex-1 bg-slate-50 rounded-2xl border border-slate-100 p-4 flex items-center justify-center relative overflow-hidden">
-          <div className="absolute inset-0 opacity-[0.03] pointer-events-none">
-            <div className="grid grid-cols-10 gap-4 p-4">
-              {Array.from({ length: 100 }).map((_, i) => (
-                <div key={i} className="w-1 h-1 bg-indigo-900 rounded-full" />
-              ))}
+        {feature.personas && (
+          <div className="flex-1 flex flex-col gap-2 overflow-y-auto">
+            <div className="text-[9px] font-bold text-slate-400 uppercase tracking-widest mb-1">Expert Arbitration</div>
+            
+            <div className="bg-blue-50/50 border border-blue-100 rounded-xl p-3 flex gap-3 items-start">
+              <div className="w-8 h-8 rounded-full bg-blue-100 flex items-center justify-center text-blue-600 font-bold text-xs shrink-0">UX</div>
+              <div>
+                <div className="flex items-center justify-between mb-1">
+                  <span className="text-[10px] font-bold text-slate-700 uppercase">UX Designer</span>
+                  <span className={`text-[10px] font-bold ${feature.personas.ux?.score >= 80 ? 'text-emerald-500' : 'text-amber-500'}`}>{feature.personas.ux?.score}/100</span>
+                </div>
+                <p className="text-xs text-slate-500 leading-snug">{feature.personas.ux?.comment}</p>
+              </div>
+            </div>
+
+            <div className="bg-purple-50/50 border border-purple-100 rounded-xl p-3 flex gap-3 items-start">
+              <div className="w-8 h-8 rounded-full bg-purple-100 flex items-center justify-center text-purple-600 font-bold text-xs shrink-0">PM</div>
+              <div>
+                <div className="flex items-center justify-between mb-1">
+                  <span className="text-[10px] font-bold text-slate-700 uppercase">Product Manager</span>
+                  <span className={`text-[10px] font-bold ${feature.personas.pm?.score >= 80 ? 'text-emerald-500' : 'text-amber-500'}`}>{feature.personas.pm?.score}/100</span>
+                </div>
+                <p className="text-xs text-slate-500 leading-snug">{feature.personas.pm?.comment}</p>
+              </div>
+            </div>
+
+            <div className="bg-emerald-50/50 border border-emerald-100 rounded-xl p-3 flex gap-3 items-start">
+              <div className="w-8 h-8 rounded-full bg-emerald-100 flex items-center justify-center text-emerald-600 font-bold text-xs shrink-0">TL</div>
+              <div>
+                <div className="flex items-center justify-between mb-1">
+                  <span className="text-[10px] font-bold text-slate-700 uppercase">Tech Lead</span>
+                  <span className={`text-[10px] font-bold ${feature.personas.tech?.score >= 80 ? 'text-emerald-500' : 'text-amber-500'}`}>{feature.personas.tech?.score}/100</span>
+                </div>
+                <p className="text-xs text-slate-500 leading-snug">{feature.personas.tech?.comment}</p>
+              </div>
             </div>
           </div>
-          
-          <div className="text-center space-y-2">
-            <div className="w-12 h-12 bg-white rounded-xl shadow-sm border border-slate-100 flex items-center justify-center mx-auto mb-2">
-              <RefreshCw className={`text-indigo-400 ${isReimagining ? 'animate-spin' : ''}`} size={24} />
-            </div>
-            <span className="text-[8px] font-bold text-slate-400 uppercase tracking-[0.2em]">Architecture Preview</span>
-          </div>
-        </div>
+        )}
       </div>
 
       {isReimagining && (

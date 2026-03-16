@@ -1,5 +1,5 @@
 {
   "name": "VibePlan",
   "description": "High-performance project management tool with a cyberpunk aesthetic and AI-driven architecture synthesis.",
-  "requestFramePermissions": []
+  "requestFramePermissions": ["microphone"]
 }

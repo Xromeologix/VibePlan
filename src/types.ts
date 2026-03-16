@@ -47,6 +47,11 @@ export interface Idea {
   type: string;
   createdAt: string;
   progress?: ProgressData;
+  personas?: {
+    ux?: { score: number; comment: string };
+    pm?: { score: number; comment: string };
+    tech?: { score: number; comment: string };
+  };
 }
 
 export interface Space {
