@@ -22,7 +22,8 @@ import {
   Trash2,
   Archive,
   ChevronRight,
-  Mic
+  Mic,
+  FlaskConical
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
 import { Space, Idea, Credits, ACCENT_COLORS } from './types';
@@ -33,6 +34,7 @@ import FeatureSwiper from './components/FeatureSwiper';
 import BlurtMode from './components/BlurtMode';
 import VibePlanIcon from './components/VibePlanIcon';
 import ThemeToggle, { useTheme } from './components/ThemeToggle';
+import RnDRoom from './components/RnDRoom';
 import { generateIcon, callGemini } from './services/gemini';
 
 interface User {
@@ -467,6 +469,22 @@ export default function App() {
             <span>Blurt</span>
           </button>
           <button 
+            onClick={() => setView('rnd')} 
+            className="flex items-center gap-2 px-4 py-2 rounded-xl font-bold text-[10px] uppercase tracking-widest transition-all duration-300"
+            style={view === 'rnd' ? {
+              background: 'var(--brand-gradient)',
+              color: 'white',
+              boxShadow: 'var(--shadow-brand)',
+            } : {
+              background: 'var(--bg-elevated)',
+              color: 'var(--text-tertiary)',
+              border: '1px solid var(--border-default)',
+            }}
+          >
+            <FlaskConical size={14} />
+            <span>R&D Room</span>
+          </button>
+          <button 
             onClick={() => setView('vault')} 
             className="flex items-center gap-2 px-4 py-2 rounded-xl font-bold text-[10px] uppercase tracking-widest transition-all duration-300"
             style={view === 'vault' ? {
@@ -824,6 +842,10 @@ export default function App() {
               </label>
             </div>
           </div>
+        )}
+        
+        {view === 'rnd' && (
+          <RnDRoom onBack={() => setView('projects')} />
         )}
 
         {view === 'swipe_suggestions' && activeSpace && (
