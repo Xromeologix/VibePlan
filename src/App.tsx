@@ -31,6 +31,8 @@ import ProgressPulse from './components/ProgressPulse';
 import NewIdeaWorkflow from './components/NewIdeaWorkflow';
 import FeatureSwiper from './components/FeatureSwiper';
 import BlurtMode from './components/BlurtMode';
+import VibePlanIcon from './components/VibePlanIcon';
+import ThemeToggle, { useTheme } from './components/ThemeToggle';
 import { generateIcon, callGemini } from './services/gemini';
 
 interface User {
@@ -48,6 +50,7 @@ const API_BASE = window.location.origin.includes('pages.dev')
   : '';
 
 export default function App() {
+  const { isDark, toggle: toggleTheme } = useTheme();
   const [view, setView] = useState('projects'); 
   const [user, setUser] = useState<User | null>(null);
   const [isLoading, setIsLoading] = useState(true);
@@ -433,41 +436,48 @@ export default function App() {
 
   if (isLoading) {
     return (
-      <div className="min-h-screen flex items-center justify-center bg-[#fafafa]">
-        <Loader2 className="w-8 h-8 text-indigo-600 animate-spin" />
+      <div className="min-h-screen flex flex-col items-center justify-center gap-4" style={{ background: 'var(--bg-base)' }}>
+        <VibePlanIcon size={56} variant={isDark ? 'dark' : 'light'} />
+        <Loader2 className="w-5 h-5 animate-spin" style={{ color: 'var(--accent-primary)' }} />
       </div>
     );
   }
 
   return (
-    <div className="min-h-screen">
-      <nav className="sticky top-0 z-50 bg-white/80 backdrop-blur-xl border-b border-slate-200/80 px-8 py-4 flex justify-between items-center shadow-sm shadow-slate-100/50 transition-all">
+    <div className="min-h-screen" style={{ background: 'var(--bg-base)', color: 'var(--text-primary)' }}>
+      <nav className="sticky top-0 z-50 px-8 py-4 flex justify-between items-center transition-all" style={{ background: 'var(--bg-overlay)', backdropFilter: 'blur(20px) saturate(180%)', WebkitBackdropFilter: 'blur(20px) saturate(180%)', borderBottom: '1px solid var(--border-subtle)', boxShadow: '0 1px 0 var(--border-subtle)' }}>
         <div className="flex items-center gap-6">
           <div onClick={() => setView('projects')} className="flex items-center gap-3 cursor-pointer group">
-            <div className="w-10 h-10 bg-gradient-to-br from-indigo-600 via-purple-600 to-fuchsia-500 rounded-xl flex items-center justify-center shadow-lg shadow-indigo-500/20 group-hover:scale-105 group-hover:shadow-indigo-500/40 transition-all duration-300">
-              <Terminal className="text-white w-5 h-5" />
+            <div className="group-hover:scale-105 transition-all duration-300">
+              <VibePlanIcon size={40} variant={isDark ? 'dark' : 'light'} />
             </div>
             <div className="flex flex-col">
-              <span className="font-extrabold text-base tracking-tight text-slate-900 leading-none group-hover:text-indigo-600 transition-colors">VibePlan</span>
-              <span className="text-[10px] font-bold text-indigo-500 uppercase tracking-widest mt-1">Version 1.4</span>
+              <span className="font-extrabold text-base tracking-tight leading-none" style={{ fontFamily: 'var(--font-display)', color: 'var(--text-primary)' }}>VibePlan</span>
+              <span className="text-[10px] font-bold uppercase tracking-widest mt-1 brand-gradient-text">Version 1.4</span>
             </div>
           </div>
         </div>
-        <div className="flex items-center gap-4">
+        <div className="flex items-center gap-3">
+          <ThemeToggle isDark={isDark} onToggle={toggleTheme} />
           <button 
             onClick={() => setIsBlurtModeOpen(true)} 
-            className="flex items-center gap-2 px-4 py-2 rounded-xl font-bold text-[10px] uppercase tracking-widest transition-all duration-300 bg-gradient-to-r from-indigo-500 to-purple-500 text-white shadow-md shadow-indigo-500/20 hover:shadow-indigo-500/40 hover:scale-105"
+            className="btn-primary flex items-center gap-2 px-4 py-2"
           >
             <Mic size={14} />
             <span>Blurt</span>
           </button>
           <button 
             onClick={() => setView('vault')} 
-            className={`flex items-center gap-2 px-4 py-2 rounded-xl font-bold text-[10px] uppercase tracking-widest transition-all duration-300 ${
-              view === 'vault' 
-                ? 'bg-indigo-600 text-white shadow-md shadow-indigo-500/20' 
-                : 'bg-slate-50 text-slate-500 border border-slate-200 hover:bg-slate-100 hover:text-slate-700'
-            }`}
+            className="flex items-center gap-2 px-4 py-2 rounded-xl font-bold text-[10px] uppercase tracking-widest transition-all duration-300"
+            style={view === 'vault' ? {
+              background: 'var(--brand-gradient)',
+              color: 'white',
+              boxShadow: 'var(--shadow-brand)',
+            } : {
+              background: 'var(--bg-elevated)',
+              color: 'var(--text-tertiary)',
+              border: '1px solid var(--border-default)',
+            }}
           >
             <Database size={14} />
             <span>Data Vault</span>
@@ -478,19 +488,19 @@ export default function App() {
       <main className="px-6 py-12 max-w-6xl mx-auto">
         {view === 'projects' && (
           <div className="space-y-8 animate-in fade-in slide-in-from-bottom-2 duration-500">
-            <div className="flex justify-between items-end border-b border-slate-200 pb-6">
+            <div className="flex justify-between items-end pb-6" style={{ borderBottom: '1px solid var(--border-default)' }}>
               <div>
-                <h2 className="text-2xl font-bold tracking-tight text-slate-900">Workspaces</h2>
-                <p className="text-[10px] text-slate-400 font-bold uppercase tracking-[0.1em] mt-1">Environment Selection</p>
+                <h2 className="text-2xl font-bold tracking-tight" style={{ fontFamily: 'var(--font-display)', color: 'var(--text-primary)' }}>Workspaces</h2>
+                <p className="text-[10px] font-bold uppercase tracking-[0.1em] mt-1" style={{ color: 'var(--text-muted)' }}>Environment Selection</p>
               </div>
-              <button onClick={() => setShowArchived(!showArchived)} className="flex items-center gap-2 text-[9px] font-bold text-slate-400 uppercase tracking-widest hover:text-indigo-600 transition-colors">
+              <button onClick={() => setShowArchived(!showArchived)} className="flex items-center gap-2 text-[9px] font-bold uppercase tracking-widest transition-colors" style={{ color: 'var(--text-muted)' }}>
                 {showArchived ? <Eye size={12} className="text-teal-500"/> : <EyeOff size={12}/>} {showArchived ? 'Active Spaces' : 'Archived Spaces'}
               </button>
             </div>
 
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-5">
-              <button onClick={() => setView('new_project')} className="flex flex-col items-center justify-center gap-3 p-8 rounded-2xl border border-dashed border-slate-300 bg-white/50 text-slate-400 hover:border-indigo-400 hover:text-indigo-600 hover:bg-indigo-50/30 transition-all group h-[120px]">
-                <div className="w-10 h-10 rounded-full bg-slate-50 flex items-center justify-center border border-slate-100 group-hover:bg-white group-hover:border-indigo-100"><Plus size={20} /></div>
+              <button onClick={() => setView('new_project')} className="flex flex-col items-center justify-center gap-3 p-8 rounded-2xl border border-dashed transition-all group h-[120px]" style={{ background: 'var(--bg-surface)', borderColor: 'var(--border-strong)', color: 'var(--text-muted)' }} onMouseEnter={e => { e.currentTarget.style.borderColor = 'var(--accent-primary)'; e.currentTarget.style.color = 'var(--accent-primary)'; e.currentTarget.style.background = 'var(--accent-glow)'; }} onMouseLeave={e => { e.currentTarget.style.borderColor = 'var(--border-strong)'; e.currentTarget.style.color = 'var(--text-muted)'; e.currentTarget.style.background = 'var(--bg-surface)'; }}>
+                <div className="w-10 h-10 rounded-full flex items-center justify-center" style={{ background: 'var(--bg-elevated)', border: '1px solid var(--border-default)' }}><Plus size={20} /></div>
                 <span className="font-bold text-[10px] uppercase tracking-[0.2em]">New Space</span>
               </button>
               
@@ -511,7 +521,7 @@ export default function App() {
                         <div className="flex h-full">
                           <button 
                             onClick={() => { setEditingSpace(p); setView('edit_space'); }}
-                            className="w-16 h-full bg-indigo-500 text-white flex flex-col items-center justify-center gap-1 hover:bg-indigo-600 transition-colors"
+                            className="w-16 h-full text-white flex flex-col items-center justify-center gap-1 transition-colors" style={{ background: 'var(--accent-primary)' }}
                           >
                             <Edit2 size={18} />
                             <span className="text-[8px] font-bold uppercase">Edit</span>
@@ -539,7 +549,7 @@ export default function App() {
                         dragConstraints={{ left: -192, right: 0 }}
                         dragElastic={0.1}
                         whileTap={{ cursor: "grabbing" }}
-                        className="absolute inset-0 bg-white rounded-2xl border border-slate-200 hover:border-indigo-500 hover:shadow-xl hover:shadow-indigo-500/5 transition-colors z-10 cursor-grab flex"
+                        className="absolute inset-0 rounded-2xl transition-colors z-10 cursor-grab flex" style={{ background: 'var(--bg-surface)', border: '1px solid var(--border-default)' }}
                       >
                         <div className="flex-1 flex h-full">
                           {/* Main Clickable Area: Roadmap */}
@@ -555,10 +565,10 @@ export default function App() {
                               )}
                             </div>
                             <div className="min-w-0">
-                              <h3 className={`text-base font-bold text-slate-900 truncate group-hover:${colorSet.text} transition-colors`}>{p.name}</h3>
+                              <h3 className="text-base font-bold truncate transition-colors" style={{ color: 'var(--text-primary)', fontFamily: 'var(--font-display)' }}>{p.name}</h3>
                               <div className="flex items-center gap-2 mt-1">
                                 <span className={`text-[9px] font-bold ${colorSet.text} uppercase tracking-tighter ${colorSet.light} px-1.5 py-0.5 rounded`}>{p.platform}</span>
-                                <span className="text-[9px] font-bold text-slate-300 uppercase">{p.ideas.length} Vibes</span>
+                                <span className="text-[9px] font-bold uppercase" style={{ color: 'var(--text-muted)' }}>{p.ideas.length} Vibes</span>
                               </div>
                             </div>
                           </div>
@@ -575,19 +585,19 @@ export default function App() {
         {view === 'roadmap' && activeSpace && (
           <div className="space-y-6 animate-in fade-in duration-400">
             <div className="flex items-center justify-between">
-              <button onClick={() => setView('projects')} className="flex items-center gap-2 px-3 py-2 text-slate-500 hover:text-indigo-600 transition-all text-[10px] font-bold uppercase tracking-widest">
+              <button onClick={() => setView('projects')} className="flex items-center gap-2 px-3 py-2 rounded-lg transition-all text-[10px] font-bold uppercase tracking-widest" style={{ color: 'var(--text-secondary)' }}>
                 <ArrowLeft size={16} /> Exit Workspace
               </button>
               <div className="flex items-center gap-3">
-                <button onClick={() => { setEditingSpace(activeSpace); setView('edit_space'); }} className="flex items-center gap-3 px-5 py-2.5 bg-white border border-slate-200 text-slate-600 rounded-lg shadow-sm hover:bg-slate-50 transition-all">
+                <button onClick={() => { setEditingSpace(activeSpace); setView('edit_space'); }} className="btn-ghost flex items-center gap-3 px-5 py-2.5">
                   <Edit2 size={14} />
                   <span className="text-[10px] font-bold uppercase tracking-widest">Edit Space</span>
                 </button>
-                <button onClick={() => { setExpansionTarget(null); setView('swipe_suggestions'); }} className="flex items-center gap-3 px-5 py-2.5 bg-white border border-slate-200 text-indigo-600 rounded-lg shadow-sm hover:bg-slate-50 transition-all">
+                <button onClick={() => { setExpansionTarget(null); setView('swipe_suggestions'); }} className="btn-ghost flex items-center gap-3 px-5 py-2.5">
                   <Sparkles size={14} className="text-amber-400" />
                   <span className="text-[10px] font-bold uppercase tracking-widest">Discover</span>
                 </button>
-                <button onClick={() => setView('new_idea')} className="flex items-center gap-3 px-5 py-2.5 rounded-lg shadow-lg shadow-indigo-200 transition-all bg-gradient-to-r from-indigo-600 to-purple-600 text-white hover:scale-[1.02] active:scale-95">
+                <button onClick={() => setView('new_idea')} className="btn-primary flex items-center gap-3 px-5 py-2.5">
                   <Zap size={14} className="fill-white/20" />
                   <span className="text-[10px] font-bold uppercase tracking-widest">Log Vibe</span>
                 </button>
@@ -596,48 +606,48 @@ export default function App() {
 
             <div className="grid grid-cols-12 gap-6">
               <div className="col-span-12 md:col-span-4 space-y-4">
-                <header className="p-8 rounded-2xl bg-white border border-slate-200 shadow-sm relative overflow-hidden">
+                <header className="p-8 rounded-2xl relative overflow-hidden card">
                    <div className={`absolute top-0 right-0 w-32 h-32 ${activeColor(activeSpace).light} rounded-full -mr-16 -mt-16 opacity-50`} />
                     <div className="relative z-10">
-                      <div className="text-4xl mb-4 p-2 bg-slate-50 inline-block rounded-xl border border-slate-100 overflow-hidden w-16 h-16 flex items-center justify-center">
+                      <div className="text-4xl mb-4 p-2 inline-block rounded-xl overflow-hidden w-16 h-16 flex items-center justify-center" style={{ background: 'var(--bg-elevated)', border: '1px solid var(--border-subtle)' }}>
                         {activeSpace.icon.startsWith('data:') ? (
                           <img src={activeSpace.icon} alt={activeSpace.name} className="w-full h-full object-cover" referrerPolicy="no-referrer" />
                         ) : (
                           activeSpace.icon
                         )}
                       </div>
-                      <h2 className="text-2xl font-bold text-slate-900 tracking-tight">{activeSpace.name}</h2>
+                      <h2 className="text-2xl font-bold tracking-tight" style={{ fontFamily: 'var(--font-display)', color: 'var(--text-primary)' }}>{activeSpace.name}</h2>
                       <p className={`text-[10px] ${activeColor(activeSpace).text} font-bold uppercase tracking-widest mt-1`}>Network: {activeSpace.platform}</p>
                       
-                      <div className="mt-8 pt-6 border-t border-slate-100 grid grid-cols-2 gap-4">
+                      <div className="mt-8 pt-6 grid grid-cols-2 gap-4" style={{ borderTop: '1px solid var(--border-subtle)' }}>
                           <div>
-                            <span className="block text-[9px] font-bold text-slate-400 uppercase tracking-widest">Vibes</span>
+                            <span className="block text-[9px] font-bold uppercase tracking-widest" style={{ color: 'var(--text-muted)' }}>Vibes</span>
                             <span className={`text-2xl font-bold font-mono ${activeColor(activeSpace).text}`}>{activeSpace.ideas.length}</span>
                           </div>
                           <div>
-                            <span className="block text-[9px] font-bold text-slate-400 uppercase tracking-widest">Status</span>
-                            <span className="text-[10px] font-bold text-teal-500 uppercase bg-teal-50 px-2 py-1 rounded inline-block mt-1">Stable</span>
+                            <span className="block text-[9px] font-bold uppercase tracking-widest" style={{ color: 'var(--text-muted)' }}>Status</span>
+                            <span className="text-[10px] font-bold uppercase px-2 py-1 rounded inline-block mt-1" style={{ background: 'rgba(20,180,120,0.12)', color: '#14b478' }}>Stable</span>
                           </div>
                       </div>
                    </div>
                 </header>
 
-                <div className="p-6 rounded-2xl bg-white border border-slate-200 shadow-sm">
-                  <h3 className="text-xs font-bold text-slate-900 uppercase tracking-widest mb-4 flex items-center gap-2">
-                    <Activity size={14} className="text-indigo-500" />
+                <div className="p-6 rounded-2xl card">
+                  <h3 className="text-xs font-bold uppercase tracking-widest mb-4 flex items-center gap-2" style={{ color: 'var(--text-primary)' }}>
+                    <Activity size={14} style={{ color: 'var(--accent-primary)' }} />
                     Project Pulse
                   </h3>
                   <div className="space-y-3">
                     <textarea 
                       value={pulseInput}
                       onChange={(e) => setPulseInput(e.target.value)}
-                      placeholder="What did you build today? (e.g., 'I added the login screen and user profile')"
-                      className="w-full h-24 p-3 text-xs border border-slate-200 rounded-xl focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 resize-none bg-slate-50"
+                      placeholder="What did you build today?"
+                      className="input-base w-full h-24 p-3 text-xs resize-none"
                     />
                     <button 
                       onClick={handleAnalyzePulse}
                       disabled={isAnalyzingPulse || !pulseInput.trim()}
-                      className="w-full py-2 bg-indigo-50 text-indigo-600 rounded-lg text-[10px] font-bold uppercase tracking-widest hover:bg-indigo-100 transition-colors flex items-center justify-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed"
+                      className="btn-primary w-full py-2 flex items-center justify-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed"
                     >
                       {isAnalyzingPulse ? <Loader2 size={12} className="animate-spin" /> : <Sparkles size={12} />} 
                       {isAnalyzingPulse ? 'Analyzing...' : 'Analyze Progress'}
@@ -647,26 +657,26 @@ export default function App() {
               </div>
               <div className="col-span-12 md:col-span-8 space-y-4">
                 {activeSpace.ideas.map((idea) => (
-                  <div key={idea.id} className="group bg-white p-6 rounded-2xl border border-slate-200 hover:border-indigo-400 hover:bg-indigo-50/10 transition-all cursor-pointer relative">
+                  <div key={idea.id} className="group p-6 rounded-2xl card card-interactive transition-all cursor-pointer relative">
                     <div onClick={() => { setSelectedFeature(idea); setView('detail'); }}>
                       <div className="flex justify-between items-start mb-4">
-                        <span className={`px-2 py-0.5 rounded ${activeColor(activeSpace).light} text-[9px] font-bold uppercase ${activeColor(activeSpace).text} border border-slate-100`}>{idea.type}</span>
-                        <span className="text-[9px] font-mono text-slate-300">REF_{idea.id.toString().slice(-4)}</span>
+                        <span className="badge-brand">{idea.type}</span>
+                        <span className="text-[9px] font-mono" style={{ color: 'var(--text-muted)' }}>REF_{idea.id.toString().slice(-4)}</span>
                       </div>
                       <div className="flex justify-between items-end">
                         <div className="flex-1">
-                          <h3 className="text-lg font-bold text-slate-900 group-hover:text-indigo-600 transition-colors">{idea.title}</h3>
-                          <p className="text-slate-500 text-xs mt-2 line-clamp-2">{idea.summary}</p>
+                          <h3 className="text-lg font-bold transition-colors" style={{ fontFamily: 'var(--font-display)', color: 'var(--text-primary)' }}>{idea.title}</h3>
+                          <p className="text-xs mt-2 line-clamp-2" style={{ color: 'var(--text-tertiary)' }}>{idea.summary}</p>
                         </div>
                         {idea.progress && (
                           <div className="ml-4 flex flex-col items-end">
                             <div className="flex items-center gap-2 mb-1">
-                              <div className="w-16 h-1.5 bg-slate-100 rounded-full overflow-hidden">
-                                <div className="h-full bg-indigo-500" style={{ width: `${idea.progress.percentage}%` }} />
+                              <div className="progress-track w-16 h-1.5">
+                                <div className="progress-fill h-full" style={{ width: `${idea.progress.percentage}%` }} />
                               </div>
-                              <span className="text-[10px] font-mono font-bold text-indigo-600">{idea.progress.percentage}%</span>
+                              <span className="text-[10px] font-mono font-bold brand-gradient-text">{idea.progress.percentage}%</span>
                             </div>
-                            <span className="text-[8px] font-bold text-slate-400 uppercase tracking-widest">Implemented</span>
+                            <span className="text-[8px] font-bold uppercase tracking-widest" style={{ color: 'var(--text-muted)' }}>Implemented</span>
                           </div>
                         )}
                       </div>
@@ -677,7 +687,7 @@ export default function App() {
                         setExpansionTarget(idea); 
                         setView('swipe_suggestions'); 
                       }} 
-                      className="absolute top-4 right-4 p-2 bg-white border border-slate-100 rounded-lg text-slate-400 hover:text-indigo-600 hover:bg-slate-50 transition-all opacity-0 group-hover:opacity-100 flex items-center gap-2"
+                      className="absolute top-4 right-4 p-2 rounded-lg transition-all opacity-0 group-hover:opacity-100 flex items-center gap-2" style={{ background: 'var(--bg-surface)', border: '1px solid var(--border-default)', color: 'var(--text-muted)' }}
                     >
                       <Sparkles size={12} className="text-amber-400" />
                       <span className="text-[8px] font-bold uppercase tracking-widest">Scan Vibe</span>
@@ -721,55 +731,55 @@ export default function App() {
         {view === 'detail' && selectedFeature && activeSpace && (
           <div className="max-w-4xl mx-auto space-y-8 animate-in fade-in duration-400">
             <div className="flex items-center justify-between">
-              <button onClick={() => setView('roadmap')} className="flex items-center gap-2 text-slate-400 hover:text-indigo-600 transition-all"><ArrowLeft size={16}/> <span className="text-[10px] font-bold uppercase tracking-widest">Back to Space</span></button>
+              <button onClick={() => setView('roadmap')} className="flex items-center gap-2 transition-all" style={{ color: 'var(--text-tertiary)' }}><ArrowLeft size={16}/> <span className="text-[10px] font-bold uppercase tracking-widest">Back to Space</span></button>
               <div className="flex items-center gap-3">
-                <button onClick={() => { setExpansionTarget(selectedFeature); setView('swipe_suggestions'); }} className="flex items-center gap-3 px-5 py-2.5 rounded-lg border border-slate-200 bg-white hover:bg-slate-50 transition-all shadow-sm">
+                <button onClick={() => { setExpansionTarget(selectedFeature); setView('swipe_suggestions'); }} className="btn-ghost flex items-center gap-3 px-5 py-2.5">
                   <Sparkles size={14} className="text-amber-400" />
                   <span className="text-[10px] font-bold uppercase tracking-widest">Scan Vibe</span>
                 </button>
-                <button onClick={() => setView('progress_pulse')} className="flex items-center gap-3 px-5 py-2.5 rounded-lg border border-slate-200 bg-white hover:bg-slate-50 transition-all shadow-sm">
-                  <Activity size={14} className="text-indigo-600" />
+                <button onClick={() => setView('progress_pulse')} className="btn-ghost flex items-center gap-3 px-5 py-2.5">
+                  <Activity size={14} style={{ color: 'var(--accent-primary)' }} />
                   <span className="text-[10px] font-bold uppercase tracking-widest">Check Progress</span>
                 </button>
               </div>
             </div>
             
             <div className="space-y-8">
-              <header className="border-b border-slate-200 pb-6 flex justify-between items-end">
+              <header className="pb-6 flex justify-between items-end" style={{ borderBottom: '1px solid var(--border-default)' }}>
                 <div>
                   <span className={`px-2 py-0.5 ${activeColor(activeSpace).bg} text-white rounded text-[9px] font-bold uppercase tracking-widest shadow-sm`}>{selectedFeature.type}</span>
-                  <h2 className="text-4xl font-bold tracking-tight text-slate-900 leading-none mt-4">{selectedFeature.title}</h2>
+                  <h2 className="text-4xl font-bold tracking-tight leading-none mt-4" style={{ fontFamily: 'var(--font-display)', color: 'var(--text-primary)' }}>{selectedFeature.title}</h2>
                 </div>
                 {selectedFeature.progress && (
                   <div className="text-right">
                     <div className="flex items-center gap-3">
-                      <div className="w-32 h-2 bg-slate-100 rounded-full overflow-hidden">
-                        <div className="h-full bg-indigo-500" style={{ width: `${selectedFeature.progress.percentage}%` }} />
+                      <div className="progress-track w-32 h-2">
+                        <div className="progress-fill h-full" style={{ width: `${selectedFeature.progress.percentage}%` }} />
                       </div>
-                      <span className="text-2xl font-mono font-bold text-indigo-600">{selectedFeature.progress.percentage}%</span>
+                      <span className="text-2xl font-mono font-bold brand-gradient-text">{selectedFeature.progress.percentage}%</span>
                     </div>
-                    <p className="text-[9px] font-bold text-slate-400 uppercase tracking-widest mt-1">Implementation Status</p>
+                    <p className="text-[9px] font-bold uppercase tracking-widest mt-1" style={{ color: 'var(--text-muted)' }}>Implementation Status</p>
                   </div>
                 )}
               </header>
               
               <div className="grid grid-cols-1 md:grid-cols-12 gap-6">
                 <div className="md:col-span-7 space-y-6">
-                  <div className={`p-8 bg-white rounded-2xl border border-slate-200 shadow-sm text-base leading-relaxed text-slate-600 font-medium border-l-4 ${activeColor(activeSpace).border}`}>
-                    <h4 className="text-[10px] font-bold uppercase tracking-widest text-slate-400 mb-2">Requirement Vibe</h4>
+                  <div className="p-8 rounded-2xl card text-base leading-relaxed font-medium" style={{ color: 'var(--text-secondary)', borderLeft: '4px solid var(--accent-primary)' }}>
+                    <h4 className="text-[10px] font-bold uppercase tracking-widest mb-2" style={{ color: 'var(--text-muted)' }}>Requirement Vibe</h4>
                     {selectedFeature.summary}
                   </div>
                   
                   {selectedFeature.progress && (
-                    <div className="p-8 bg-indigo-50/30 rounded-2xl border border-indigo-100 space-y-4">
-                       <h4 className="text-[10px] font-bold uppercase tracking-widest text-indigo-500">Implementation Review</h4>
-                       <p className="text-sm text-slate-700 italic">"{selectedFeature.progress.summary}"</p>
+                    <div className="p-8 rounded-2xl space-y-4" style={{ background: 'var(--accent-glow)', border: '1px solid var(--accent-glow-strong)' }}>
+                       <h4 className="text-[10px] font-bold uppercase tracking-widest brand-gradient-text">Implementation Review</h4>
+                       <p className="text-sm italic" style={{ color: 'var(--text-secondary)' }}>"{selectedFeature.progress.summary}"</p>
                        {selectedFeature.progress.missing && selectedFeature.progress.missing.length > 0 && (
                          <div className="space-y-2">
-                            <span className="text-[9px] font-bold text-slate-400 uppercase">Missing Blocks:</span>
+                            <span className="text-[9px] font-bold uppercase" style={{ color: 'var(--text-muted)' }}>Missing Blocks:</span>
                             <div className="flex flex-wrap gap-2">
                               {selectedFeature.progress.missing.map((m, i) => (
-                                <span key={i} className="px-2 py-1 bg-white border border-slate-200 rounded-md text-[10px] font-bold text-rose-500 flex items-center gap-1">
+                                <span key={i} className="px-2 py-1 rounded-md text-[10px] font-bold flex items-center gap-1" style={{ background: 'var(--bg-surface)', border: '1px solid var(--border-default)', color: '#f43f5e' }}>
                                   <AlertCircle size={10} /> {m}
                                 </span>
                               ))}
@@ -790,24 +800,24 @@ export default function App() {
         {view === 'vault' && (
           <div className="max-w-xl mx-auto space-y-12 animate-in fade-in duration-500 text-center">
             <header className="space-y-2">
-               <div className="w-16 h-16 bg-teal-50 text-teal-500 rounded-2xl flex items-center justify-center mx-auto mb-6 shadow-inner"><Database size={32} /></div>
-               <h2 className="text-2xl font-bold tracking-tight text-slate-900">System Data Terminal</h2>
-               <p className="text-slate-400 text-xs font-medium uppercase tracking-widest">Portable Space Serialization</p>
+               <div className="w-16 h-16 rounded-2xl flex items-center justify-center mx-auto mb-6" style={{ background: 'var(--brand-gradient-soft)', color: 'var(--accent-primary)'  }}><Database size={32} /></div>
+               <h2 className="text-2xl font-bold tracking-tight" style={{ fontFamily: 'var(--font-display)', color: 'var(--text-primary)' }}>System Data Terminal</h2>
+               <p className="text-xs font-medium uppercase tracking-widest" style={{ color: 'var(--text-muted)' }}>Portable Space Serialization</p>
             </header>
             <div className="grid grid-cols-1 gap-4 text-left">
-              <button onClick={handleExport} className="group w-full flex items-center justify-between p-6 bg-white border border-slate-200 rounded-2xl hover:border-indigo-500 hover:shadow-xl hover:shadow-indigo-500/5 transition-all">
+              <button onClick={handleExport} className="group w-full flex items-center justify-between p-6 rounded-2xl card card-interactive transition-all">
                 <div className="space-y-1">
-                  <span className="block text-[10px] font-bold uppercase tracking-widest text-indigo-600 group-hover:translate-x-1 transition-transform">Export Space Map</span>
-                  <span className="text-[10px] text-slate-400">Save current spaces with timestamp</span>
+                  <span className="block text-[10px] font-bold uppercase tracking-widest group-hover:translate-x-1 transition-transform brand-gradient-text">Export Space Map</span>
+                  <span className="text-[10px]" style={{ color: 'var(--text-muted)' }}>Save current spaces with timestamp</span>
                 </div>
-                <Download size={20} className="text-slate-300 group-hover:text-indigo-600 transition-colors" />
+                <Download size={20} style={{ color: 'var(--text-muted)' }} />
               </button>
-              <label className={`group w-full flex items-center justify-between p-6 bg-white border rounded-2xl transition-all cursor-pointer ${importStatus === 'success' ? 'border-teal-500 bg-teal-50/30' : importStatus === 'error' ? 'border-rose-500 bg-rose-50/30' : 'border-slate-200 hover:border-teal-500 hover:shadow-xl hover:shadow-teal-500/5'}`}>
+              <label className="group w-full flex items-center justify-between p-6 rounded-2xl card card-interactive transition-all cursor-pointer">
                 <div className="space-y-1">
                   <span className="block text-[10px] font-bold uppercase tracking-widest text-teal-600 group-hover:translate-x-1 transition-transform">
                     {importStatus === 'processing' ? 'Processing...' : importStatus === 'success' ? 'Data Ingested' : importStatus === 'error' ? 'Format Violation' : 'Ingest Space Map'}
                   </span>
-                  <span className="text-[10px] text-slate-400">Restore architecture from JSON payload</span>
+                  <span className="text-[10px]" style={{ color: 'var(--text-muted)' }}>Restore architecture from JSON payload</span>
                 </div>
                 {importStatus === 'processing' ? <Loader2 size={20} className="animate-spin text-teal-500" /> : importStatus === 'success' ? <Sparkles size={20} className="text-teal-500" /> : importStatus === 'error' ? <AlertCircle size={20} className="text-rose-500" /> : <Upload size={20} className="text-slate-300 group-hover:text-teal-600 transition-colors" />}
                 <input type="file" ref={fileInputRef} className="hidden" onChange={handleImport} accept=".json" />
@@ -868,16 +878,16 @@ export default function App() {
 
         {view === 'edit_space' && editingSpace && (
            <div className="max-w-xl mx-auto space-y-8 animate-in zoom-in-95 duration-400">
-              <header className="border-b border-slate-200 pb-4">
-                <h2 className="text-xl font-bold text-slate-900">Configure Space</h2>
-                <p className="text-indigo-400 font-bold uppercase text-[9px] tracking-widest">Update System Parameters</p>
+              <header className="pb-4" style={{ borderBottom: '1px solid var(--border-default)' }}>
+                <h2 className="text-xl font-bold" style={{ fontFamily: 'var(--font-display)', color: 'var(--text-primary)' }}>Configure Space</h2>
+                <p className="font-bold uppercase text-[9px] tracking-widest brand-gradient-text">Update System Parameters</p>
               </header>
-              <div className="bg-white border border-slate-200 rounded-2xl p-8 space-y-8">
+              <div className="p-8 space-y-8 card">
                  <div className="flex gap-6">
                     <div className="w-24 space-y-2">
-                      <label className="text-[9px] font-bold uppercase tracking-widest text-slate-400 px-1">Icon</label>
+                      <label className="text-[9px] font-bold uppercase tracking-widest px-1" style={{ color: 'var(--text-muted)' }}>Icon</label>
                       <div className="relative group/icon">
-                        <div className="w-full h-20 bg-slate-50 border border-slate-200 rounded-xl flex items-center justify-center text-3xl overflow-hidden">
+                        <div className="w-full h-20 rounded-xl flex items-center justify-center text-3xl overflow-hidden" style={{ background: 'var(--bg-elevated)', border: '1px solid var(--border-default)' }}>
                           {generatedIcon || (editingSpace.icon.startsWith('data:') ? editingSpace.icon : null) ? (
                             <img src={generatedIcon || editingSpace.icon} alt="Space Icon" className="w-full h-full object-cover" referrerPolicy="no-referrer" />
                           ) : (
@@ -903,7 +913,7 @@ export default function App() {
                               }
                             }}
                             disabled={isGeneratingIcon}
-                            className="p-1.5 bg-indigo-600 text-white rounded-lg shadow-lg hover:scale-110 transition-all disabled:opacity-50 disabled:scale-100"
+                            className="p-1.5 text-white rounded-lg hover:scale-110 transition-all disabled:opacity-50 disabled:scale-100" style={{ background: 'var(--accent-primary)' }}
                           >
                             {isGeneratingIcon ? <Loader2 size={12} className="animate-spin" /> : <Sparkles size={12} />}
                           </button>
@@ -924,30 +934,30 @@ export default function App() {
                       </div>
                     </div>
                     <div className="flex-1 space-y-2">
-                      <label className="text-[9px] font-bold uppercase tracking-widest text-slate-400 px-1">Namespace</label>
-                      <input id="edit-name" className="w-full p-3 bg-slate-50 border border-slate-200 rounded-xl text-sm font-bold focus:bg-white outline-none" defaultValue={editingSpace.name} />
+                      <label className="text-[9px] font-bold uppercase tracking-widest px-1" style={{ color: 'var(--text-muted)' }}>Namespace</label>
+                      <input id="edit-name" className="input-base w-full p-3 text-sm font-bold" defaultValue={editingSpace.name} />
                     </div>
                  </div>
                  <div className="flex gap-6 mt-6">
                     <div className="flex-1 space-y-2">
-                      <label className="text-[9px] font-bold uppercase tracking-widest text-slate-400 px-1">Platform</label>
-                      <input id="edit-platform" className="w-full p-3 bg-slate-50 border border-slate-200 rounded-xl text-sm font-bold focus:bg-white outline-none" defaultValue={editingSpace.platform} />
+                      <label className="text-[9px] font-bold uppercase tracking-widest px-1" style={{ color: 'var(--text-muted)' }}>Platform</label>
+                      <input id="edit-platform" className="input-base w-full p-3 text-sm font-bold" defaultValue={editingSpace.platform} />
                     </div>
                     <div className="flex-1 space-y-2">
-                      <label className="text-[9px] font-bold uppercase tracking-widest text-slate-400 px-1">Accent Color</label>
-                      <select id="edit-color" className="w-full p-3 bg-slate-50 border border-slate-200 rounded-xl text-sm font-bold focus:bg-white outline-none" defaultValue={editingSpace.color}>
+                      <label className="text-[9px] font-bold uppercase tracking-widest px-1" style={{ color: 'var(--text-muted)' }}>Accent Color</label>
+                      <select id="edit-color" className="input-base w-full p-3 text-sm font-bold" defaultValue={editingSpace.color}>
                         {ACCENT_COLORS.map(c => <option key={c.name} value={c.name}>{c.name}</option>)}
                       </select>
                     </div>
                  </div>
                  
                  <div className="space-y-2">
-                    <label className="text-[9px] font-bold uppercase tracking-widest text-slate-400 px-1">Icon Style / Specification (Optional)</label>
+                    <label className="text-[9px] font-bold uppercase tracking-widest px-1" style={{ color: 'var(--text-muted)' }}>Icon Style / Specification (Optional)</label>
                     <textarea 
                       value={iconStyle}
                       onChange={(e) => setIconStyle(e.target.value)}
                       placeholder="e.g. Cyberpunk style, neon colors, minimalist line art..."
-                      className="w-full p-3 bg-slate-50 border border-slate-200 rounded-xl text-xs focus:bg-white outline-none min-h-[60px]"
+                      className="input-base w-full p-3 text-xs min-h-[60px]"
                     />
                  </div>
 
@@ -990,8 +1000,8 @@ export default function App() {
                          console.error('Failed to update space:', error);
                          alert(`Failed to update space: ${error instanceof Error ? error.message : 'Unknown error'}`);
                        }
-                    }} className="flex-1 py-4 bg-indigo-600 text-white font-bold text-[10px] uppercase tracking-[0.2em] rounded-xl shadow-lg">Commit Changes</button>
-                    <button onClick={() => { setGeneratedIcon(null); setIconStyle(''); setView('projects'); }} className="px-6 py-4 bg-white text-slate-400 font-bold text-[10px] uppercase tracking-widest rounded-xl border border-slate-200">Cancel</button>
+                    }} className="btn-primary flex-1 py-4">Commit Changes</button>
+                    <button onClick={() => { setGeneratedIcon(null); setIconStyle(''); setView('projects'); }} className="btn-ghost px-6 py-4">Cancel</button>
                  </div>
               </div>
            </div>
@@ -999,19 +1009,19 @@ export default function App() {
 
         {view === 'new_project' && (
           <div className="max-w-xl mx-auto space-y-8 animate-in zoom-in-95 duration-400">
-            <header className="border-b border-slate-200 pb-4 flex items-center justify-between">
+            <header className="pb-4 flex items-center justify-between" style={{ borderBottom: '1px solid var(--border-default)' }}>
               <div>
-                <h2 className="text-xl font-bold text-slate-900">Initialize Space</h2>
-                <p className="text-indigo-400 font-bold uppercase text-[9px] tracking-widest">New Environment Provisioning</p>
+                <h2 className="text-xl font-bold" style={{ fontFamily: 'var(--font-display)', color: 'var(--text-primary)' }}>Initialize Space</h2>
+                <p className="font-bold uppercase text-[9px] tracking-widest brand-gradient-text">New Environment Provisioning</p>
               </div>
-              <div className="w-10 h-10 bg-indigo-50 rounded-full flex items-center justify-center text-indigo-500"><Rocket size={18} /></div>
+              <div className="w-10 h-10 rounded-full flex items-center justify-center" style={{ background: 'var(--accent-glow)', color: 'var(--accent-primary)' }}><Rocket size={18} /></div>
             </header>
-            <div className="bg-white border border-slate-200 rounded-2xl p-8 shadow-xl shadow-slate-200/50 space-y-8">
+            <div className="p-8 space-y-8 card">
               <div className="flex gap-6">
                 <div className="w-24 space-y-2">
-                  <label className="text-[9px] font-bold uppercase tracking-widest text-slate-400 px-1">Icon</label>
+                  <label className="text-[9px] font-bold uppercase tracking-widest px-1" style={{ color: 'var(--text-muted)' }}>Icon</label>
                   <div className="relative group/icon">
-                    <div className="w-full h-20 bg-slate-50 border border-slate-200 rounded-xl flex items-center justify-center text-3xl overflow-hidden">
+                    <div className="w-full h-20 rounded-xl flex items-center justify-center text-3xl overflow-hidden" style={{ background: 'var(--bg-elevated)', border: '1px solid var(--border-default)' }}>
                       {generatedIcon ? (
                         <img src={generatedIcon} alt="Generated" className="w-full h-full object-cover" referrerPolicy="no-referrer" />
                       ) : (
@@ -1041,7 +1051,7 @@ export default function App() {
                           }
                         }}
                         disabled={isGeneratingIcon}
-                        className="p-1.5 bg-indigo-600 text-white rounded-lg shadow-lg hover:scale-110 transition-all disabled:opacity-50 disabled:scale-100"
+                        className="p-1.5 text-white rounded-lg hover:scale-110 transition-all disabled:opacity-50 disabled:scale-100" style={{ background: 'var(--accent-primary)' }}
                       >
                         {isGeneratingIcon ? <Loader2 size={12} className="animate-spin" /> : <Sparkles size={12} />}
                       </button>
@@ -1057,18 +1067,18 @@ export default function App() {
                   </div>
                 </div>
                 <div className="flex-1 space-y-2">
-                  <label className="text-[9px] font-bold uppercase tracking-widest text-slate-400 px-1">Namespace</label>
-                  <input id="proj-name-input" autoFocus className="w-full p-3 bg-slate-50 border border-slate-200 rounded-xl text-sm font-bold focus:bg-white focus:outline-none transition-all" placeholder="Enter Space Name..." />
+                  <label className="text-[9px] font-bold uppercase tracking-widest px-1" style={{ color: 'var(--text-muted)' }}>Namespace</label>
+                  <input id="proj-name-input" autoFocus className="input-base w-full p-3 text-sm font-bold" placeholder="Enter Space Name..." />
                 </div>
               </div>
 
               <div className="space-y-2">
-                <label className="text-[9px] font-bold uppercase tracking-widest text-slate-400 px-1">Icon Style / Specification (Optional)</label>
+                <label className="text-[9px] font-bold uppercase tracking-widest px-1" style={{ color: 'var(--text-muted)' }}>Icon Style / Specification (Optional)</label>
                 <textarea 
                   value={iconStyle}
                   onChange={(e) => setIconStyle(e.target.value)}
                   placeholder="e.g. Cyberpunk style, neon colors, minimalist line art..."
-                  className="w-full p-3 bg-slate-50 border border-slate-200 rounded-xl text-xs focus:bg-white outline-none min-h-[60px]"
+                  className="input-base w-full p-3 text-xs min-h-[60px]"
                 />
               </div>
 
@@ -1111,8 +1121,8 @@ export default function App() {
                       alert(`Failed to create space: ${error instanceof Error ? error.message : 'Unknown error'}`);
                     }
                   }
-                }} className="flex-1 py-4 bg-indigo-600 text-white font-bold text-[10px] uppercase tracking-[0.2em] rounded-xl hover:bg-indigo-700 shadow-lg shadow-indigo-100 transition-all">Deploy Workspace</button>
-                <button onClick={() => { setGeneratedIcon(null); setIconStyle(''); setView('projects'); }} className="px-6 py-4 bg-white text-slate-400 font-bold text-[10px] uppercase tracking-widest rounded-xl border border-slate-200">Abort</button>
+                }} className="btn-primary flex-1 py-4">Deploy Workspace</button>
+                <button onClick={() => { setGeneratedIcon(null); setIconStyle(''); setView('projects'); }} className="btn-ghost px-6 py-4">Abort</button>
               </div>
             </div>
           </div>
